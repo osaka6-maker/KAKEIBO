@@ -54,9 +54,6 @@
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-    // ==========================================
-    // ★ Firebase Config ★
-    // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyAW0RzaHk4UJmOzT5Yej23YWcJsVcMVPVA",
       authDomain: "kakeibo-8ffc5.firebaseapp.com",
@@ -178,7 +175,6 @@
         appData.categories.push({ id: 101, name: '出張手当', type: 'income' }, { id: 102, name: 'その他収入', type: 'income' });
       }
 
-      // ★ グラフ表示用グループ設定の初期化
       if (!appData.chartGroups) {
         appData.chartGroups = {
           'g1': { name: '食費', color: 'bg-orange-400' },
@@ -526,14 +522,13 @@
         }).join('');
         const legendHTML = `<div class="flex flex-wrap mt-3 pt-3 border-t border-gray-50">${legendItemsHTML}</div>`;
         
-        // ★ 高さを 250px に変更
         graphHTML = `
           <div class="w-full h-[250px] overflow-x-auto flex items-end space-x-4 pb-2 px-1 snap-x scroll-smooth custom-scrollbar">
             ${sortedMonths.map(m => {
               const heightPercentage = maxAmount > 0 ? Math.max((m.amount / maxAmount) * 100, 2) : 2; 
               const blocksHTML = Object.entries(m.items).sort(([, a], [, b]) => b - a).map(([grpId, amt]) => {
                  const info = getGroupInfo(grpId);
-                 return `<div class="w-full ${info.color}" style="height: ${(amt / m.amount) * 100}%;"></div>`;
+                 return `<div class="w-full ${info.color} chart-block-btn cursor-pointer transition-opacity hover:opacity-75" style="height: ${(amt / m.amount) * 100}%;" data-year="${m.year}" data-month="${m.month}" data-group="${grpId}"></div>`;
               }).join('');
               return `
                 <div class="flex flex-col items-center justify-end h-full shrink-0 snap-end w-14">
@@ -545,7 +540,6 @@
           </div>${legendHTML}`;
       } else { graphHTML = `<div class="text-center text-sm text-gray-400 py-10">データがありません</div>`; }
 
-      // ★ 月平均の計算を修正（データが存在する月数で割る）
       const monthlyCategoryTotals = {};
       const uniqueCycleMonths = new Set();
       appData.expenses.filter(e => e.type === 'variable').forEach(e => {
@@ -586,6 +580,7 @@
             </label>
           </div>
           ${graphHTML}
+          <div id="chart-breakdown-container" class="mt-4 bg-gray-50 rounded-xl p-3 hidden transition-all duration-300"></div>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i>固定費(年間)</div><div class="divide-y divide-gray-50 text-xs">${fixedHTML}</div></div>
@@ -637,7 +632,6 @@
       if (appData.specialTransactions.length === 0) specialHTML = `<div class="p-3 text-center text-sm text-gray-400">登録されていません</div>`;
       const currY = new Date().getFullYear();
 
-      // ★ グラフグループ設定のHTML
       let groupConfigHTML = `
         <div class="grid grid-cols-2 gap-3 mb-4">
           ${['g1', 'g2', 'g3', 'g4'].map(gId => `
@@ -835,6 +829,60 @@
         migrateBtn.innerHTML = '<i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ';
         lucide.createIcons(); return;
       }
+      
+      const blockBtn = e.target.closest('.chart-block-btn');
+      if (blockBtn) {
+          const year = parseInt(blockBtn.dataset.year, 10); const month = parseInt(blockBtn.dataset.month, 10); const grpId = blockBtn.dataset.group;
+          const container = document.getElementById('chart-breakdown-container');
+          if (!container) return;
+          
+          const info = grpId === 'fixed' ? {name: '固定費', color: 'bg-rose-500'} : (appData.chartGroups[grpId] || {name: 'その他', color: 'bg-gray-400'});
+          let groupCats = [];
+          if (grpId === 'fixed') { groupCats = appData.fixedCosts.map(fc => ({ id: fc.id, name: fc.name })); } 
+          else { groupCats = appData.categories.filter(c => c.type === 'variable' && (c.groupId === grpId || (!c.groupId && grpId === 'g3'))); }
+          
+          const targetExpenses = appData.expenses.filter(e => { const c = getCycle(new Date(e.date)); return c.year === year && c.month === month && e.type !== 'income'; });
+          const catTotals = {}; let totalGrpAmt = 0;
+          
+          targetExpenses.forEach(e => {
+              let eGrp = 'g3';
+              if (e.type === 'fixed') eGrp = 'fixed';
+              else { const cat = appData.categories.find(c => String(c.id) === String(e.categoryId)); eGrp = cat ? (cat.groupId || 'g3') : 'g3'; }
+              if (eGrp === grpId) {
+                  const id = e.type === 'fixed' ? (e.fixedCostId || e.categoryId) : e.categoryId;
+                  catTotals[id] = (catTotals[id] || 0) + e.amount;
+                  totalGrpAmt += e.amount;
+              }
+          });
+          
+          const listHTML = groupCats.map(cat => `
+              <div class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
+                  <span class="text-xs text-gray-600">${escapeHTML(cat.name)}</span>
+                  <span class="text-sm font-bold text-gray-800">${formatCurrency(catTotals[cat.id] || 0)}</span>
+              </div>
+          `).join('');
+          
+          container.innerHTML = `
+              <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center"><span class="w-3 h-3 rounded-full ${info.color} mr-2 shadow-inner"></span><span class="text-sm font-bold text-gray-800">${year}年${month}月 - ${escapeHTML(info.name)}</span></div>
+                  <button type="button" id="close-chart-breakdown" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+              </div>
+              <div class="text-[10px] text-gray-500 mb-2 leading-relaxed border-b border-dashed border-gray-200 pb-2">構成カテゴリ：${groupCats.length > 0 ? groupCats.map(c=>escapeHTML(c.name)).join('、') : 'なし'}</div>
+              <div class="bg-white rounded-lg p-2 shadow-sm border border-gray-100">
+                  ${listHTML || '<div class="text-xs text-gray-400 py-2 text-center">データがありません</div>'}
+                  <div class="flex justify-between items-center pt-2 mt-1 border-t border-gray-200 font-bold text-sm"><span>合計</span><span>${formatCurrency(totalGrpAmt)}</span></div>
+              </div>
+          `;
+          container.classList.remove('hidden'); lucide.createIcons();
+          setTimeout(() => container.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+          return;
+      }
+
+      if (e.target.closest('#close-chart-breakdown')) {
+          const container = document.getElementById('chart-breakdown-container');
+          if (container) container.classList.add('hidden');
+          return;
+      }
 
       if (e.target.closest('#confirm-cancel-btn')) { confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
       if (e.target.closest('#confirm-ok-btn')) { if (confirmModalState.onConfirm) confirmModalState.onConfirm(); confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
@@ -978,8 +1026,6 @@
         if (itemEl) itemEl.classList.add('opacity-0', 'scale-95');
         setTimeout(() => { todoList = todoList.filter(t => String(t.id) !== String(id)); saveTodo(); updateView(); }, 300);
       }
-      
-      // ★ グラフグループの設定変更
       if (e.target.classList.contains('update-group-name')) {
         const gId = e.target.dataset.gid; appData.chartGroups[gId].name = e.target.value; saveData(); updateView();
       }
