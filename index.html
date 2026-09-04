@@ -10,6 +10,8 @@
     tailwind.config = { theme: { extend: { spacing: { 'safe': 'env(safe-area-inset-bottom)' } } } }
   </script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- ★ 長押しドラッグ＆ドロップ用のライブラリ -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
   <style>
     input, select, textarea { font-size: 16px !important; }
@@ -18,6 +20,9 @@
     .custom-scrollbar::-webkit-scrollbar { display: block; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    /* ドラッグ中の要素を少し浮かせたようなスタイルに */
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-drag { background: #fff; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); border-radius: 1rem; }
   </style>
 </head>
 <body class="bg-gray-900 h-[100dvh] w-full font-sans text-gray-800 flex justify-center overflow-hidden">
@@ -43,7 +48,8 @@
       <div id="tab-history" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden"></div>
       <div id="tab-todo" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden"></div>
       <div id="tab-yearly" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 hidden"></div>
-      <div id="tab-settings" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 relative hidden"></div>
+      <!-- 設定タブ内のスクロールも滑らかに -->
+      <div id="tab-settings" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 relative hidden scroll-smooth"></div>
     </main>
     <nav id="nav" class="bg-white border-t border-gray-200 w-full px-2 py-2 flex justify-between items-center z-20 pb-safe shrink-0"></nav>
     <div id="modals" class="relative z-50"></div>
@@ -614,8 +620,6 @@
         <div class="bg-white border border-gray-200 text-gray-700 text-sm pl-3 pr-1 py-1 rounded-full flex items-center shadow-sm max-w-full">
           <span class="truncate mr-2 font-medium">${escapeHTML(cat.name)}</span>
           <div class="flex items-center space-x-1 border-l border-gray-100 pl-1 shrink-0">
-            <button type="button" class="move-cat-up-btn text-gray-400 hover:text-emerald-500 p-1 disabled:opacity-30 disabled:hover:text-gray-400 transition-colors" data-id="${cat.id}" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-left" class="w-4 h-4 pointer-events-none"></i></button>
-            <button type="button" class="move-cat-down-btn text-gray-400 hover:text-emerald-500 p-1 disabled:opacity-30 disabled:hover:text-gray-400 transition-colors" data-id="${cat.id}" ${index === array.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-right" class="w-4 h-4 pointer-events-none"></i></button>
             <button type="button" class="open-del-cat-btn text-gray-400 hover:text-red-500 p-1 ml-1 transition-colors" data-id="${cat.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
           </div>
         </div>
@@ -649,13 +653,12 @@
       const currY = new Date().getFullYear();
 
       let groupConfigHTML = `
-        <div class="grid grid-cols-1 gap-2 mb-4">
-          ${appData.chartGroupOrder.map((gId, index, arr) => `
-            <div class="flex items-center border border-gray-200 rounded-xl p-1 bg-gray-50 shadow-sm">
-               <div class="w-4 h-4 rounded-full ${appData.chartGroups[gId].color} mx-2 shrink-0 shadow-inner"></div>
+        <div id="chart-group-list" class="grid grid-cols-1 gap-2 mb-4">
+          ${appData.chartGroupOrder.map((gId) => `
+            <div class="flex items-center border border-gray-200 rounded-xl p-1 bg-gray-50 shadow-sm" data-id="${gId}">
+               <div class="cg-drag-handle p-2 text-gray-400 cursor-grab touch-none"><i data-lucide="grip-vertical" class="w-5 h-5 pointer-events-none"></i></div>
+               <div class="w-4 h-4 rounded-full ${appData.chartGroups[gId].color} mr-2 shrink-0 shadow-inner"></div>
                <input type="text" class="w-full p-1.5 text-sm bg-transparent outline-none font-medium text-gray-700 update-group-name" data-gid="${gId}" value="${escapeHTML(appData.chartGroups[gId].name)}" placeholder="グループ名">
-               <button type="button" class="move-cg-up-btn text-gray-400 hover:text-emerald-500 p-2 disabled:opacity-30" data-id="${gId}" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-up" class="w-5 h-5 pointer-events-none"></i></button>
-               <button type="button" class="move-cg-down-btn text-gray-400 hover:text-emerald-500 p-2 disabled:opacity-30" data-id="${gId}" ${index === arr.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-down" class="w-5 h-5 pointer-events-none"></i></button>
             </div>
           `).join('')}
         </div>
@@ -691,27 +694,32 @@
         chartGroup: { title: 'グラフ表示グループ設定', html: groupConfigHTML },
         category: { title: 'カテゴリ設定', html: `<div class="mb-5"><h4 class="text-sm font-bold text-gray-700 mb-2">支出カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${varCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="variable"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-emerald-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div><div><h4 class="text-sm font-bold text-gray-700 mb-2">収入カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${incCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="income"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-blue-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div>` },
         fixed: { title: '固定費設定', html: `<div class="space-y-3">${fixedHTML}</div>${fixedFormHTML}` },
-        special: {
-          title: '特別収支設定',
-          html: `<div class="mb-4 border border-gray-100 rounded-lg max-h-48 overflow-y-auto">${specialHTML}</div><form id="add-special-form" class="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100"><div class="grid grid-cols-3 gap-2"><select id="st-year" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="${currY}">${currY}年</option><option value="${currY + 1}">${currY + 1}年</option></select><select id="st-month" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white">${Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}月</option>`).join('')}</select><select id="st-type" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="expense">支出</option><option value="income">収入</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" id="st-name" placeholder="項目名" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /><input type="number" id="st-amount" placeholder="金額" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /></div><input type="text" id="st-memo" placeholder="メモ (任意)" class="w-full p-2 border border-blue-200 rounded-lg text-sm" /><button type="submit" class="w-full bg-blue-600 text-white text-sm py-2 rounded-lg font-medium">追加</button></form>`
-        }
+        special: { title: '特別収支設定', html: `<div class="mb-4 border border-gray-100 rounded-lg max-h-48 overflow-y-auto">${specialHTML}</div><form id="add-special-form" class="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100"><div class="grid grid-cols-3 gap-2"><select id="st-year" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="${currY}">${currY}年</option><option value="${currY + 1}">${currY + 1}年</option></select><select id="st-month" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white">${Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}月</option>`).join('')}</select><select id="st-type" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="expense">支出</option><option value="income">収入</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" id="st-name" placeholder="項目名" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /><input type="number" id="st-amount" placeholder="金額" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /></div><input type="text" id="st-memo" placeholder="メモ (任意)" class="w-full p-2 border border-blue-200 rounded-lg text-sm" /><button type="submit" class="w-full bg-blue-600 text-white text-sm py-2 rounded-lg font-medium">追加</button></form>` }
       };
 
-      return appData.settingsOrder.map((secId, index, arr) => {
-        const sec = sectionsData[secId];
-        return `
-          <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 transition-transform duration-300">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-              <h3 class="font-bold text-gray-800">${sec.title}</h3>
-              <div class="flex space-x-1 shrink-0">
-                <button type="button" class="move-sec-up p-1 text-gray-400 hover:text-emerald-500 disabled:opacity-30" data-id="${secId}" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-up" class="w-5 h-5 pointer-events-none"></i></button>
-                <button type="button" class="move-sec-down p-1 text-gray-400 hover:text-emerald-500 disabled:opacity-30" data-id="${secId}" ${index === arr.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-down" class="w-5 h-5 pointer-events-none"></i></button>
-              </div>
-            </div>
-            ${sec.html}
-          </section>
-        `;
-      }).join('');
+      const secNames = { account: 'アカウント', budget: '予算', chartGroup: 'グラフ', category: 'カテゴリ', fixed: '固定費', special: '特別収支' };
+      const quickJumpHTML = `
+        <div class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur -mx-4 -mt-4 mb-6 px-4 py-3 border-b border-gray-200 flex overflow-x-auto gap-2 custom-scrollbar shadow-sm">
+          ${appData.settingsOrder.map(secId => `<button type="button" class="shrink-0 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-100" onclick="document.getElementById('sec-${secId}').scrollIntoView({behavior:'smooth', block:'start'})">${secNames[secId]}</button>`).join('')}
+        </div>
+      `;
+
+      return quickJumpHTML + `
+        <div id="settings-sections-list" class="space-y-6">
+          ${appData.settingsOrder.map((secId) => {
+            const sec = sectionsData[secId];
+            return `
+              <section id="sec-${secId}" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 scroll-mt-20" data-id="${secId}">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                  <h3 class="font-bold text-gray-800">${sec.title}</h3>
+                  <div class="sec-drag-handle p-1 text-gray-400 cursor-grab touch-none"><i data-lucide="grip-horizontal" class="w-5 h-5 pointer-events-none"></i></div>
+                </div>
+                ${sec.html}
+              </section>
+            `;
+          }).join('')}
+        </div>
+      `;
     };
 
     const renderModals = () => {
@@ -782,7 +790,25 @@
       if (activeTab === 'history') activeContainer.innerHTML = renderHistoryHTML(currentCycle);
       if (activeTab === 'todo') activeContainer.innerHTML = renderTodoHTML();
       if (activeTab === 'yearly') activeContainer.innerHTML = renderYearlyHTML(currentCycle);
-      if (activeTab === 'settings') activeContainer.innerHTML = renderSettingsHTML();
+      if (activeTab === 'settings') {
+        activeContainer.innerHTML = renderSettingsHTML();
+        
+        // ★ 長押しドラッグ＆ドロップ機能の初期化 ★
+        const secList = document.getElementById('settings-sections-list');
+        if (secList) {
+          new Sortable(secList, {
+            handle: '.sec-drag-handle', animation: 200, delay: 200, delayOnTouchOnly: true,
+            onEnd: function () { appData.settingsOrder = Array.from(secList.children).map(el => el.dataset.id); saveData(); }
+          });
+        }
+        const cgList = document.getElementById('chart-group-list');
+        if (cgList) {
+          new Sortable(cgList, {
+            handle: '.cg-drag-handle', animation: 200, delay: 200, delayOnTouchOnly: true,
+            onEnd: function () { appData.chartGroupOrder = Array.from(cgList.children).map(el => el.dataset.id); saveData(); updateView(); }
+          });
+        }
+      }
       
       document.getElementById('nav').innerHTML = renderNavHTML();
       renderModals();
@@ -897,32 +923,6 @@
           return;
       }
 
-      if (e.target.closest('.move-sec-up')) {
-        const btn = e.target.closest('.move-sec-up'); if (btn.disabled) return;
-        const id = btn.dataset.id; const idx = appData.settingsOrder.indexOf(id);
-        if (idx > 0) { [appData.settingsOrder[idx - 1], appData.settingsOrder[idx]] = [appData.settingsOrder[idx], appData.settingsOrder[idx - 1]]; saveData(); updateView(); }
-        return;
-      }
-      if (e.target.closest('.move-sec-down')) {
-        const btn = e.target.closest('.move-sec-down'); if (btn.disabled) return;
-        const id = btn.dataset.id; const idx = appData.settingsOrder.indexOf(id);
-        if (idx < appData.settingsOrder.length - 1) { [appData.settingsOrder[idx + 1], appData.settingsOrder[idx]] = [appData.settingsOrder[idx], appData.settingsOrder[idx + 1]]; saveData(); updateView(); }
-        return;
-      }
-
-      if (e.target.closest('.move-cg-up-btn')) {
-        const btn = e.target.closest('.move-cg-up-btn'); if (btn.disabled) return;
-        const id = btn.dataset.id; const idx = appData.chartGroupOrder.indexOf(id);
-        if (idx > 0) { [appData.chartGroupOrder[idx - 1], appData.chartGroupOrder[idx]] = [appData.chartGroupOrder[idx], appData.chartGroupOrder[idx - 1]]; saveData(); updateView(); }
-        return;
-      }
-      if (e.target.closest('.move-cg-down-btn')) {
-        const btn = e.target.closest('.move-cg-down-btn'); if (btn.disabled) return;
-        const id = btn.dataset.id; const idx = appData.chartGroupOrder.indexOf(id);
-        if (idx < appData.chartGroupOrder.length - 1) { [appData.chartGroupOrder[idx + 1], appData.chartGroupOrder[idx]] = [appData.chartGroupOrder[idx], appData.chartGroupOrder[idx + 1]]; saveData(); updateView(); }
-        return;
-      }
-
       if (e.target.closest('#confirm-cancel-btn')) { confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
       if (e.target.closest('#confirm-ok-btn')) { if (confirmModalState.onConfirm) confirmModalState.onConfirm(); confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
       if (e.target.closest('#alert-ok-btn')) { alertModalState.isOpen = false; updateView(); return; }
@@ -968,30 +968,6 @@
         updateView(); return;
       }
 
-      const moveCatUpBtn = e.target.closest('.move-cat-up-btn');
-      if (moveCatUpBtn && !moveCatUpBtn.disabled) {
-        const catIndex = appData.categories.findIndex(c => String(c.id) === String(moveCatUpBtn.dataset.id));
-        if (catIndex > 0) {
-          const currentCat = appData.categories[catIndex]; let prevIndex = -1;
-          for(let i = catIndex - 1; i >= 0; i--) { if(appData.categories[i].type === currentCat.type) { prevIndex = i; break; } }
-          if (prevIndex !== -1) {
-            const temp = appData.categories[prevIndex]; appData.categories[prevIndex] = appData.categories[catIndex]; appData.categories[catIndex] = temp;
-            saveData(); updateView();
-          }
-        } return;
-      }
-      const moveCatDownBtn = e.target.closest('.move-cat-down-btn');
-      if (moveCatDownBtn && !moveCatDownBtn.disabled) {
-        const catIndex = appData.categories.findIndex(c => String(c.id) === String(moveCatDownBtn.dataset.id));
-        if (catIndex > -1 && catIndex < appData.categories.length - 1) {
-          const currentCat = appData.categories[catIndex]; let nextIndex = -1;
-          for(let i = catIndex + 1; i < appData.categories.length; i++) { if(appData.categories[i].type === currentCat.type) { nextIndex = i; break; } }
-          if (nextIndex !== -1) {
-            const temp = appData.categories[nextIndex]; appData.categories[nextIndex] = appData.categories[catIndex]; appData.categories[catIndex] = temp;
-            saveData(); updateView();
-          }
-        } return;
-      }
       if (e.target.closest('#toggle-fixed-form-btn')) { showFixedForm = true; updateView(); return; }
       if (e.target.closest('#cancel-fixed-form-btn')) { showFixedForm = false; updateView(); return; }
       const delFixedBtn = e.target.closest('.del-fixed-btn');
@@ -1067,12 +1043,12 @@
       }
       
       if (e.target.classList.contains('update-group-name')) {
-        const gId = e.target.dataset.gid; appData.chartGroups[gId].name = e.target.value; saveData(); updateView();
+        const gId = e.target.dataset.gid; appData.chartGroups[gId].name = e.target.value; saveData();
       }
       if (e.target.classList.contains('change-cat-group')) {
         const catId = e.target.dataset.catid; const newGroupId = e.target.value;
         const catIndex = appData.categories.findIndex(c => String(c.id) === String(catId));
-        if(catIndex !== -1) { appData.categories[catIndex].groupId = newGroupId; saveData(); updateView(); }
+        if(catIndex !== -1) { appData.categories[catIndex].groupId = newGroupId; saveData(); }
       }
     });
 
