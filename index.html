@@ -103,16 +103,20 @@
     };
     const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
-    // ★ 前月比のHTML生成関数を修正（横並び表示に対応）
+    // ★ 前月比の表示設定を追加
+    let showMoMDiff = true;
+
+    // ★ 前月比のHTML生成関数を修正（文字サイズを text-xs に、％と金額を両方表示）
     const getDiffHTML = (curr, prev) => {
+        if (!showMoMDiff) return '';
         if (!curr && !prev) return '';
         const diff = curr - prev;
-        if (diff === 0) return `<span class="text-[10px] text-gray-400 ml-2 whitespace-nowrap pt-0.5 w-16 text-right inline-block">±0</span>`;
+        if (diff === 0) return `<span class="text-xs text-gray-400 ml-1.5 whitespace-nowrap font-medium w-24 text-right inline-block">±0</span>`;
         const signStr = diff > 0 ? '+' : '-';
         const color = diff > 0 ? 'text-red-500' : 'text-blue-500';
         const pct = prev > 0 ? Math.round((diff / prev) * 100) : (curr > 0 ? 100 : 0);
         const pctStr = prev > 0 ? `${diff > 0 ? '+' : ''}${pct}%` : 'New';
-        return `<span class="text-[10px] ${color} ml-2 font-medium tracking-tight whitespace-nowrap pt-0.5 w-20 text-right inline-block" title="${signStr}${formatCurrency(Math.abs(diff))}">${pctStr}</span>`;
+        return `<span class="text-xs ${color} ml-1.5 font-medium tracking-tight whitespace-nowrap w-32 text-right inline-block">${pctStr} (${signStr}${formatCurrency(Math.abs(diff))})</span>`;
     };
 
     const initialData = {
@@ -183,7 +187,15 @@
 
     const sanitizeAppData = () => {
       if (!appData) appData = JSON.parse(JSON.stringify(initialData));
-      if (appData.settings) delete appData.settings;
+      
+      if (appData.settings && appData.settings.showMoMDiff !== undefined) {
+         showMoMDiff = appData.settings.showMoMDiff;
+      } else {
+         if (!appData.settings) appData.settings = {};
+         appData.settings.showMoMDiff = true;
+         showMoMDiff = true;
+      }
+
       if (!appData.budget) appData.budget = initialData.budget;
       if (!appData.categories) appData.categories = initialData.categories;
       if (!appData.fixedCosts) appData.fixedCosts = initialData.fixedCosts;
@@ -440,7 +452,7 @@
                 <div class="space-y-0">
                   ${sortedVariable.map(cat => {
                      const prev = prevCategoryTotals[cat.id] || 0;
-                     return `<div class="flex justify-between items-center text-xs py-1.5 border-b border-emerald-100/50 last:border-0"><span class="text-emerald-700">${escapeHTML(getCategoryName(cat.id))}</span><div class="flex items-center"><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span>${getDiffHTML(cat.amount, prev)}</div></div>`;
+                     return `<div class="flex justify-between items-center text-sm py-1.5 border-b border-emerald-100/50 last:border-0"><span class="text-emerald-700">${escapeHTML(getCategoryName(cat.id))}</span><div class="flex items-center"><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span>${getDiffHTML(cat.amount, prev)}</div></div>`;
                   }).join('')}
                 </div>
               </article>` : ''}
@@ -454,7 +466,7 @@
                   ${sortedFixed.map(cat => {
                      const sampleExp = cycleExpenses.find(e => String(e.fixedCostId) === String(cat.id) || String(e.categoryId) === String(cat.id));
                      const name = sampleExp?.type === 'fixed' ? (sampleExp.name || getCategoryName(sampleExp.categoryId)) : getCategoryName(cat.id);
-                     return `<div class="flex justify-between items-center text-xs"><span class="text-indigo-700">${escapeHTML(name)}</span><span class="font-bold text-indigo-900">${formatCurrency(cat.amount)}</span></div>`;
+                     return `<div class="flex justify-between items-center text-sm"><span class="text-indigo-700">${escapeHTML(name)}</span><span class="font-bold text-indigo-900">${formatCurrency(cat.amount)}</span></div>`;
                   }).join('')}
                 </div>
               </details>` : ''}
@@ -464,7 +476,7 @@
                   <span>収入</span><span>+${formatCurrency(totalIncomeCat)}</span>
                 </header>
                 <div class="space-y-1.5 pl-1">
-                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
+                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-sm"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
                 </div>
               </article>` : ''}
             </div>
@@ -746,6 +758,13 @@
               <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-2"></i>三井住友カード(Vpass) CSVを取り込む
             </button>
             <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-3 border border-gray-100">
+               <span class="text-sm font-medium text-gray-700">前月比の表示</span>
+               <label class="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" id="toggle-mom-diff" class="sr-only peer" ${showMoMDiff ? 'checked' : ''}>
+                 <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+               </label>
+            </div>
             <button id="migrate-gas-btn" class="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 py-3 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors mb-3 flex items-center justify-center shadow-sm"><i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ</button>
             <button id="logout-btn" class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center justify-center"><i data-lucide="log-out" class="w-4 h-4 mr-2"></i>ログアウト</button>
           `
@@ -1060,8 +1079,8 @@
               if(curr === 0 && prev === 0) return '';
               return `
               <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                  <span class="text-xs text-gray-600">${escapeHTML(cat.name)}</span>
-                  <div class="flex items-center">
+                  <span class="text-xs text-gray-600 truncate pr-2">${escapeHTML(cat.name)}</span>
+                  <div class="flex items-center shrink-0">
                       <span class="text-sm font-bold text-gray-800">${formatCurrency(curr)}</span>
                       ${getDiffHTML(curr, prev)}
                   </div>
@@ -1078,8 +1097,8 @@
                   ${listHTML || '<div class="text-xs text-gray-400 py-2 text-center">データがありません</div>'}
                   ${(totalGrpAmt > 0 || prevTotalGrpAmt > 0) ? `
                   <div class="flex justify-between items-center pt-2 mt-1 border-t border-gray-200 font-bold text-sm">
-                      <span>合計</span>
-                      <div class="flex items-center">
+                      <span class="truncate pr-2">合計</span>
+                      <div class="flex items-center shrink-0">
                           <span>${formatCurrency(totalGrpAmt)}</span>
                           ${getDiffHTML(totalGrpAmt, prevTotalGrpAmt)}
                       </div>
@@ -1289,6 +1308,15 @@
       if (e.target.id === 'cycle-select') { const [y, m] = e.target.value.split('-').map(Number); viewCycleDate = getCycleFromYearMonth(y, m); updateView(); }
       if (e.target.id === 'toggle-fixed-chart') { includeFixedCostsInChart = e.target.checked; updateView(); }
       
+      // ★ 前月比の表示切り替え
+      if (e.target.id === 'toggle-mom-diff') {
+          showMoMDiff = e.target.checked;
+          if (!appData.settings) appData.settings = {};
+          appData.settings.showMoMDiff = showMoMDiff;
+          saveData();
+          updateView();
+      }
+
       if (e.target.classList.contains('csv-item-check')) {
           const id = e.target.dataset.id;
           const item = importCsvModalState.items.find(i => i.id === id);
