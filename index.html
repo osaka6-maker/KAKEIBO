@@ -54,6 +54,9 @@
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+    // ==========================================
+    // ★ Firebase Config ★
+    // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyAW0RzaHk4UJmOzT5Yej23YWcJsVcMVPVA",
       authDomain: "kakeibo-8ffc5.firebaseapp.com",
@@ -174,6 +177,23 @@
       if (!appData.categories.some(c => c.type === 'income')) {
         appData.categories.push({ id: 101, name: '出張手当', type: 'income' }, { id: 102, name: 'その他収入', type: 'income' });
       }
+
+      // ★ グラフ表示用グループ設定の初期化
+      if (!appData.chartGroups) {
+        appData.chartGroups = {
+          'g1': { name: '食費', color: 'bg-orange-400' },
+          'g2': { name: '生活・趣味', color: 'bg-blue-500' },
+          'g3': { name: 'その他', color: 'bg-gray-400' },
+          'g4': { name: '未割り当て', color: 'bg-emerald-500' }
+        };
+      }
+      appData.categories.forEach(c => {
+        if (c.type === 'variable' && !c.groupId) {
+          if (['スーパー', '外食', 'コンビニ'].some(kw => c.name.includes(kw))) c.groupId = 'g1';
+          else if (['車', 'PL', '交通費', '交際費', '日用品', 'バドミントン'].some(kw => c.name.includes(kw))) c.groupId = 'g2';
+          else c.groupId = 'g3';
+        }
+      });
     };
 
     const getCategoryName = (id) => {
@@ -468,9 +488,13 @@
     const renderYearlyHTML = (currentCycle) => {
       const targetYear = currentCycle.year;
       const specialInThisYear = appData.specialTransactions.filter(t => t.year === targetYear || !t.year);
-      const monthlyTotals = {};
-      const usedCategories = new Set();
       
+      const monthlyTotals = {};
+      const usedGroups = new Set();
+      
+      const catToGroup = {};
+      appData.categories.forEach(c => catToGroup[c.id] = c.groupId || 'g3');
+
       appData.expenses.filter(e => e.type !== 'income').forEach(e => {
         if (!includeFixedCostsInChart && e.type === 'fixed') return;
         const c = getCycle(new Date(e.date));
@@ -478,44 +502,39 @@
         if (!monthlyTotals[key]) monthlyTotals[key] = { year: c.year, month: c.month, amount: 0, items: {} };
         monthlyTotals[key].amount += e.amount;
         
-        const catId = e.type === 'fixed' ? (e.fixedCostId || e.categoryId) : e.categoryId;
-        if (!monthlyTotals[key].items[catId]) monthlyTotals[key].items[catId] = 0;
-        monthlyTotals[key].items[catId] += e.amount;
-        usedCategories.add(catId);
+        let grpId = e.type === 'fixed' ? 'fixed' : (catToGroup[e.categoryId] || 'g3');
+        if (!monthlyTotals[key].items[grpId]) monthlyTotals[key].items[grpId] = 0;
+        monthlyTotals[key].items[grpId] += e.amount;
+        usedGroups.add(grpId);
       });
 
       const sortedMonths = Object.keys(monthlyTotals).sort().map(k => monthlyTotals[k]);
-      const getCategoryColor = (id) => {
-        const chartColors = ['bg-[#4e79a7]', 'bg-[#f28e2b]', 'bg-[#e15759]', 'bg-[#76b7b2]', 'bg-[#59a14f]', 'bg-[#edc948]', 'bg-[#b07aa1]', 'bg-[#ff9da7]', 'bg-[#9c755f]', 'bg-[#bab0ac]'];
-        const allItems = [...appData.categories.filter(c => c.type === 'variable'), ...appData.fixedCosts];
-        const index = allItems.findIndex(item => String(item.id) === String(id));
-        if (index !== -1) return chartColors[index % chartColors.length];
-        let val = 0; const strId = String(id);
-        for(let i=0; i<strId.length; i++) { val = (val << 5) - val + strId.charCodeAt(i); val |= 0; }
-        return chartColors[Math.abs(val) % chartColors.length];
-      };
-
-      const getName = (id) => {
-         let cat = appData.categories.find(c => String(c.id) === String(id));
-         if (cat) return cat.name;
-         let fc = appData.fixedCosts.find(f => String(f.id) === String(id));
-         if (fc) return fc.name;
-         return '未選択';
+      
+      const getGroupInfo = (grpId) => {
+        if (grpId === 'fixed') return { name: '固定費', color: 'bg-rose-500' };
+        if (appData.chartGroups[grpId]) return appData.chartGroups[grpId];
+        return { name: 'その他', color: 'bg-gray-400' };
       };
 
       let graphHTML = '';
       if (sortedMonths.length > 0) {
         const maxAmount = Math.max(...sortedMonths.map(m => m.amount));
-        const legendItemsHTML = Array.from(usedCategories).map(id => `
-          <div class="flex items-center mr-3 mb-1"><span class="w-2.5 h-2.5 rounded-full ${getCategoryColor(id)} mr-1"></span><span class="text-[10px] text-gray-500">${escapeHTML(getName(id))}</span></div>
-        `).join('');
+        const legendItemsHTML = Array.from(usedGroups).map(grpId => {
+          const info = getGroupInfo(grpId);
+          if(!info.name) return '';
+          return `<div class="flex items-center mr-3 mb-1"><span class="w-2.5 h-2.5 rounded-full ${info.color} mr-1"></span><span class="text-[10px] text-gray-500">${escapeHTML(info.name)}</span></div>`;
+        }).join('');
         const legendHTML = `<div class="flex flex-wrap mt-3 pt-3 border-t border-gray-50">${legendItemsHTML}</div>`;
         
+        // ★ 高さを 250px に変更
         graphHTML = `
-          <div class="w-full h-[160px] overflow-x-auto flex items-end space-x-4 pb-2 px-1 snap-x scroll-smooth custom-scrollbar">
+          <div class="w-full h-[250px] overflow-x-auto flex items-end space-x-4 pb-2 px-1 snap-x scroll-smooth custom-scrollbar">
             ${sortedMonths.map(m => {
               const heightPercentage = maxAmount > 0 ? Math.max((m.amount / maxAmount) * 100, 2) : 2; 
-              const blocksHTML = Object.entries(m.items).sort(([, a], [, b]) => b - a).map(([id, amt]) => `<div class="w-full ${getCategoryColor(id)}" style="height: ${(amt / m.amount) * 100}%;"></div>`).join('');
+              const blocksHTML = Object.entries(m.items).sort(([, a], [, b]) => b - a).map(([grpId, amt]) => {
+                 const info = getGroupInfo(grpId);
+                 return `<div class="w-full ${info.color}" style="height: ${(amt / m.amount) * 100}%;"></div>`;
+              }).join('');
               return `
                 <div class="flex flex-col items-center justify-end h-full shrink-0 snap-end w-14">
                   <span class="text-[9px] font-medium text-gray-500 mb-1 whitespace-nowrap">${new Intl.NumberFormat('ja-JP').format(m.amount)}</span>
@@ -526,12 +545,21 @@
           </div>${legendHTML}`;
       } else { graphHTML = `<div class="text-center text-sm text-gray-400 py-10">データがありません</div>`; }
 
+      // ★ 月平均の計算を修正（データが存在する月数で割る）
       const monthlyCategoryTotals = {};
-      appData.expenses.filter(e => e.type === 'variable' && new Date(e.date).getFullYear() === targetYear).forEach(e => {
-        if (!monthlyCategoryTotals[e.categoryId]) monthlyCategoryTotals[e.categoryId] = 0;
-        monthlyCategoryTotals[e.categoryId] += e.amount;
+      const uniqueCycleMonths = new Set();
+      appData.expenses.filter(e => e.type === 'variable').forEach(e => {
+        const c = getCycle(new Date(e.date));
+        if (c.year === targetYear) {
+           uniqueCycleMonths.add(c.month);
+           if (!monthlyCategoryTotals[e.categoryId]) monthlyCategoryTotals[e.categoryId] = 0;
+           monthlyCategoryTotals[e.categoryId] += e.amount;
+        }
       });
-      const categoryAverages = appData.categories.filter(c => c.type === 'variable').map(cat => ({ id: cat.id, name: cat.name, avg: Math.round((monthlyCategoryTotals[cat.id] || 0) / 12) }));
+      const divBy = Math.max(1, uniqueCycleMonths.size);
+      const categoryAverages = appData.categories.filter(c => c.type === 'variable')
+         .map(cat => ({ id: cat.id, name: cat.name, avg: Math.round((monthlyCategoryTotals[cat.id] || 0) / divBy) }))
+         .sort((a,b) => b.avg - a.avg);
 
       let specialHTML = specialInThisYear.sort((a, b) => a.month - b.month).map(st => `
         <div class="p-4 flex justify-between items-center border-b border-gray-50 last:border-0">
@@ -609,6 +637,31 @@
       if (appData.specialTransactions.length === 0) specialHTML = `<div class="p-3 text-center text-sm text-gray-400">登録されていません</div>`;
       const currY = new Date().getFullYear();
 
+      // ★ グラフグループ設定のHTML
+      let groupConfigHTML = `
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          ${['g1', 'g2', 'g3', 'g4'].map(gId => `
+            <div class="flex items-center border border-gray-200 rounded-xl p-1 bg-gray-50 shadow-sm">
+               <div class="w-4 h-4 rounded-full ${appData.chartGroups[gId].color} mx-2 shrink-0 shadow-inner"></div>
+               <input type="text" class="w-full p-1.5 text-sm bg-transparent outline-none font-medium text-gray-700 update-group-name" data-gid="${gId}" value="${escapeHTML(appData.chartGroups[gId].name)}" placeholder="グループ名">
+            </div>
+          `).join('')}
+        </div>
+        <h4 class="text-xs font-bold text-gray-500 mb-2 border-b pb-1 flex items-center">カテゴリの振り分け</h4>
+        <div class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+          ${appData.categories.filter(c => c.type === 'variable').map(c => `
+             <div class="flex justify-between items-center text-sm p-2 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+                <span class="truncate pr-2 font-medium text-gray-700">${escapeHTML(c.name)}</span>
+                <select class="p-1.5 border border-gray-200 rounded-lg bg-white text-xs shrink-0 change-cat-group font-bold text-gray-600 outline-none focus:ring-2 focus:ring-emerald-500" data-catid="${c.id}">
+                   ${['g1', 'g2', 'g3', 'g4'].map(gId => `
+                      <option value="${gId}" ${c.groupId === gId ? 'selected' : ''}>${escapeHTML(appData.chartGroups[gId].name || '未設定')}</option>
+                   `).join('')}
+                </select>
+             </div>
+          `).join('')}
+        </div>
+      `;
+
       return `
         <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
           <div class="flex justify-between items-center mb-4 border-b pb-2"><h3 class="font-bold text-gray-800">アカウント設定</h3><span class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-full">${currentUser?.email}</span></div>
@@ -624,6 +677,11 @@
           <h3 class="font-bold text-gray-800 mb-3 border-b pb-2">予算設定</h3>
           <input type="number" id="budget-month-input" value="${escapeHTML(appData.budget.monthly)}" class="w-full p-2 border rounded-lg text-sm mb-2" />
           <button id="save-budget-btn" class="w-full bg-gray-800 text-white py-2 rounded-lg font-medium text-sm">保存する</button>
+        </section>
+
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+          <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">グラフ表示グループ設定</h3>
+          ${groupConfigHTML}
         </section>
 
         <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
@@ -919,6 +977,16 @@
         const id = e.target.dataset.id; const itemEl = document.getElementById(`todo-item-${id}`);
         if (itemEl) itemEl.classList.add('opacity-0', 'scale-95');
         setTimeout(() => { todoList = todoList.filter(t => String(t.id) !== String(id)); saveTodo(); updateView(); }, 300);
+      }
+      
+      // ★ グラフグループの設定変更
+      if (e.target.classList.contains('update-group-name')) {
+        const gId = e.target.dataset.gid; appData.chartGroups[gId].name = e.target.value; saveData(); updateView();
+      }
+      if (e.target.classList.contains('change-cat-group')) {
+        const catId = e.target.dataset.catid; const newGroupId = e.target.value;
+        const catIndex = appData.categories.findIndex(c => String(c.id) === String(catId));
+        if(catIndex !== -1) { appData.categories[catIndex].groupId = newGroupId; saveData(); updateView(); }
       }
     });
 
