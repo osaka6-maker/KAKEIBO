@@ -10,7 +10,6 @@
     tailwind.config = { theme: { extend: { spacing: { 'safe': 'env(safe-area-inset-bottom)' } } } }
   </script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- ★ 長押しドラッグ＆ドロップ用のライブラリ -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
   <style>
@@ -20,7 +19,6 @@
     .custom-scrollbar::-webkit-scrollbar { display: block; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    /* ドラッグ中の要素を少し浮かせたようなスタイルに */
     .sortable-ghost { opacity: 0.4; }
     .sortable-drag { background: #fff; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); border-radius: 1rem; }
   </style>
@@ -48,8 +46,8 @@
       <div id="tab-history" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden"></div>
       <div id="tab-todo" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden"></div>
       <div id="tab-yearly" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 hidden"></div>
-      <!-- 設定タブ内のスクロールも滑らかに -->
-      <div id="tab-settings" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 relative hidden scroll-smooth"></div>
+      <!-- ★ 設定タブの隙間を消すためにレイアウト構造を変更 -->
+      <div id="tab-settings" class="h-full overflow-y-auto overflow-x-hidden relative hidden scroll-smooth bg-gray-50"></div>
     </main>
     <nav id="nav" class="bg-white border-t border-gray-200 w-full px-2 py-2 flex justify-between items-center z-20 pb-safe shrink-0"></nav>
     <div id="modals" class="relative z-50"></div>
@@ -545,8 +543,9 @@
           <div class="w-full h-[250px] overflow-x-auto flex items-end space-x-4 pb-2 px-1 snap-x scroll-smooth custom-scrollbar">
             ${sortedMonths.map(m => {
               const heightPercentage = maxAmount > 0 ? Math.max((m.amount / maxAmount) * 100, 2) : 2; 
+              // ★ 固定費が一番下になるようにソート順を修正 (-1 を返すことで最初に配置し、flex-col-reverseで一番下に表示)
               const blocksHTML = Object.entries(m.items).sort(([a], [b]) => {
-                  if (a === 'fixed') return 1; if (b === 'fixed') return -1;
+                  if (a === 'fixed') return -1; if (b === 'fixed') return 1;
                   return appData.chartGroupOrder.indexOf(a) - appData.chartGroupOrder.indexOf(b);
               }).map(([grpId, amt]) => {
                  const info = getGroupInfo(grpId);
@@ -577,6 +576,14 @@
          .map(cat => ({ id: cat.id, name: cat.name, avg: Math.round((monthlyCategoryTotals[cat.id] || 0) / divBy) }))
          .sort((a,b) => b.avg - a.avg);
 
+      // ★ 変動費の期間テキスト生成
+      let periodText = '(月平均)';
+      if (uniqueCycleMonths.size > 0) {
+          const minMonth = Math.min(...Array.from(uniqueCycleMonths));
+          const maxMonth = Math.max(...Array.from(uniqueCycleMonths));
+          periodText = minMonth === maxMonth ? `(${minMonth}月 平均)` : `(${minMonth}〜${maxMonth}月 平均)`;
+      }
+
       let specialHTML = specialInThisYear.sort((a, b) => a.month - b.month).map(st => `
         <div class="p-4 flex justify-between items-center border-b border-gray-50 last:border-0">
           <div class="flex items-center min-w-0 pr-3">
@@ -588,8 +595,23 @@
       `).join('');
       if (specialInThisYear.length === 0) specialHTML = `<div class="p-4 text-center text-sm text-gray-400">登録されていません</div>`;
 
+      // ★ 固定費リストと小計
       let fixedHTML = appData.fixedCosts.map(fc => `<div class="p-2 flex justify-between"><span class="text-gray-600 truncate mr-2">${escapeHTML(fc.name)}</span><span class="font-bold">${formatCurrency(fc.amount * 12)}</span></div>`).join('');
-      if (appData.fixedCosts.length === 0) fixedHTML = `<div class="p-2 text-gray-400">なし</div>`;
+      if (appData.fixedCosts.length > 0) {
+          const totalFixedAnnual = appData.fixedCosts.reduce((sum, fc) => sum + (fc.amount * 12), 0);
+          fixedHTML += `<div class="p-2 flex justify-between bg-gray-100 font-bold border-t border-gray-200 text-sm mt-1 rounded-b-lg"><span class="text-gray-700">小計</span><span class="text-gray-900">${formatCurrency(totalFixedAnnual)}</span></div>`;
+      } else {
+          fixedHTML = `<div class="p-2 text-gray-400">なし</div>`;
+      }
+
+      // ★ 変動費リストと小計
+      let varAvgHTML = categoryAverages.map(cat => `<div class="p-2 flex justify-between"><span class="text-gray-600 truncate mr-2">${escapeHTML(cat.name)}</span><span class="font-bold">${formatCurrency(cat.avg)}</span></div>`).join('');
+      if (categoryAverages.length > 0) {
+          const totalVarAvg = categoryAverages.reduce((sum, cat) => sum + cat.avg, 0);
+          varAvgHTML += `<div class="p-2 flex justify-between bg-gray-100 font-bold border-t border-gray-200 text-sm mt-1 rounded-b-lg"><span class="text-gray-700">小計</span><span class="text-gray-900">${formatCurrency(totalVarAvg)}</span></div>`;
+      } else {
+          varAvgHTML = `<div class="p-2 text-gray-400">なし</div>`;
+      }
 
       return `
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative mb-4">
@@ -605,8 +627,8 @@
           <div id="chart-breakdown-container" class="mt-4 bg-gray-50 rounded-xl p-3 hidden transition-all duration-300"></div>
         </div>
         <div class="grid grid-cols-2 gap-4">
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i>固定費(年間)</div><div class="divide-y divide-gray-50 text-xs">${fixedHTML}</div></div>
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="trending-down" class="w-3 h-3 mr-1"></i>変動費(月平均)</div><div class="divide-y divide-gray-50 text-xs">${categoryAverages.map(cat => `<div class="p-2 flex justify-between"><span class="text-gray-600 truncate mr-2">${escapeHTML(cat.name)}</span><span class="font-bold">${formatCurrency(cat.avg)}</span></div>`).join('')}</div></div>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i>固定費(年間)</div><div class="divide-y divide-gray-50 text-xs">${fixedHTML}</div></div>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="trending-down" class="w-3 h-3 mr-1"></i>変動費${periodText}</div><div class="divide-y divide-gray-50 text-xs">${varAvgHTML}</div></div>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[250px] max-h-[320px] mt-4">
           <div class="bg-gray-50 p-3 border-b border-gray-100 font-bold text-sm text-gray-700 flex items-center justify-between shrink-0"><div class="flex items-center"><i data-lucide="calendar" class="w-4 h-4 mr-2"></i>特別収支</div></div>
@@ -698,14 +720,15 @@
       };
 
       const secNames = { account: 'アカウント', budget: '予算', chartGroup: 'グラフ', category: 'カテゴリ', fixed: '固定費', special: '特別収支' };
+      // ★ 隙間のないヘッダーメニュー
       const quickJumpHTML = `
-        <div class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur -mx-4 -mt-4 mb-6 px-4 py-3 border-b border-gray-200 flex overflow-x-auto gap-2 custom-scrollbar shadow-sm">
+        <div class="sticky top-0 z-30 bg-gray-50 px-4 pt-4 pb-3 border-b border-gray-200 flex overflow-x-auto gap-2 custom-scrollbar shadow-sm">
           ${appData.settingsOrder.map(secId => `<button type="button" class="shrink-0 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-100" onclick="document.getElementById('sec-${secId}').scrollIntoView({behavior:'smooth', block:'start'})">${secNames[secId]}</button>`).join('')}
         </div>
       `;
 
       return quickJumpHTML + `
-        <div id="settings-sections-list" class="space-y-6">
+        <div id="settings-sections-list" class="space-y-6 p-4 pb-24">
           ${appData.settingsOrder.map((secId) => {
             const sec = sectionsData[secId];
             return `
@@ -793,7 +816,6 @@
       if (activeTab === 'settings') {
         activeContainer.innerHTML = renderSettingsHTML();
         
-        // ★ 長押しドラッグ＆ドロップ機能の初期化 ★
         const secList = document.getElementById('settings-sections-list');
         if (secList) {
           new Sortable(secList, {
