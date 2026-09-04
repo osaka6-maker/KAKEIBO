@@ -25,8 +25,9 @@
 </head>
 <body class="bg-gray-900 h-[100dvh] w-full font-sans text-gray-800 flex justify-center overflow-hidden">
   
-  <div id="login-screen" class="absolute inset-0 z-50 bg-gray-50 flex flex-col items-center justify-center hidden">
-    <div class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full mx-4">
+  <!-- ログイン画面 -->
+  <section id="login-screen" class="absolute inset-0 z-50 bg-gray-50 flex flex-col items-center justify-center hidden" aria-label="ログイン画面">
+    <article class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full mx-4">
       <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
         <i data-lucide="wallet" class="w-8 h-8"></i>
       </div>
@@ -36,21 +37,23 @@
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5 mr-3" alt="Google">
         Googleアカウントでログイン
       </button>
-    </div>
-  </div>
+    </article>
+  </section>
 
+  <!-- アプリ本体 -->
   <div id="app-container" class="w-full max-w-md bg-gray-100 h-full flex flex-col relative shadow-2xl overflow-hidden hidden">
     <header id="header" class="bg-white px-4 py-3 shadow-sm z-10 flex justify-between items-center border-b border-gray-200 shrink-0"></header>
+    
     <main id="main" class="flex-1 overflow-hidden relative bg-gray-50">
-      <div id="tab-home" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 hidden"></div>
-      <div id="tab-history" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden"></div>
-      <div id="tab-todo" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden"></div>
-      <div id="tab-yearly" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 hidden"></div>
-      <!-- ★ 設定タブの隙間を消すためにレイアウト構造を変更 -->
-      <div id="tab-settings" class="h-full overflow-y-auto overflow-x-hidden relative hidden scroll-smooth bg-gray-50"></div>
+      <section id="tab-home" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 hidden" aria-label="ホーム"></section>
+      <section id="tab-history" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden" aria-label="履歴"></section>
+      <section id="tab-todo" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden" aria-label="チェックリスト"></section>
+      <section id="tab-yearly" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 hidden" aria-label="年次サマリー"></section>
+      <section id="tab-settings" class="h-full overflow-y-auto overflow-x-hidden relative hidden scroll-smooth bg-gray-50" aria-label="設定"></section>
     </main>
-    <nav id="nav" class="bg-white border-t border-gray-200 w-full px-2 py-2 flex justify-between items-center z-20 pb-safe shrink-0"></nav>
-    <div id="modals" class="relative z-50"></div>
+
+    <nav id="nav" class="bg-white border-t border-gray-200 w-full px-2 py-2 flex justify-between items-center z-20 pb-safe shrink-0" aria-label="メインナビゲーション"></nav>
+    <aside id="modals" class="relative z-50" aria-label="モーダルダイアログエリア"></aside>
   </div>
 
   <script type="module">
@@ -255,7 +258,7 @@
       let optionsHTML = cycleList.map(c => `<option value="${c.year}-${c.month}" ${(c.year === viewCycle.year && c.month === viewCycle.month) ? 'selected' : ''}>${c.year}年${c.month}月度</option>`).join('');
 
       return `
-        <div><h1 class="font-bold text-lg text-emerald-600 flex items-center"><i data-lucide="wallet" class="w-5 h-5 mr-2"></i>家計簿</h1></div>
+        <div class="flex items-center"><h1 class="font-bold text-lg text-emerald-600 flex items-center"><i data-lucide="wallet" class="w-5 h-5 mr-2"></i>家計簿</h1></div>
         <div class="flex items-center space-x-3">
           <div id="header-sync-status" class="flex items-center justify-center"></div>
           <div class="relative">
@@ -272,7 +275,7 @@
         { id: 'settings', label: '設定', icon: 'settings' }
       ];
       return items.map(item => `
-        <button class="nav-btn flex flex-col items-center justify-center w-1/5 py-2 transition-colors ${activeTab === item.id ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600'}" data-tab="${item.id}">
+        <button class="nav-btn flex flex-col items-center justify-center w-1/5 py-2 transition-colors ${activeTab === item.id ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600'}" data-tab="${item.id}" aria-label="${item.label}">
           <div class="mb-1 transition-transform ${activeTab === item.id ? 'transform scale-110' : ''}"><i data-lucide="${item.icon}" class="w-6 h-6"></i></div>
           <span class="text-[10px] font-bold">${item.label}</span>
         </button>
@@ -311,11 +314,11 @@
       }).join('');
 
       return `
-        <div class="rounded-2xl p-6 shadow-sm border border-gray-100 ${bgColor} transition-colors duration-500">
-          <div class="flex items-center justify-between mb-1">
+        <section class="rounded-2xl p-6 shadow-sm border border-gray-100 ${bgColor} transition-colors duration-500" aria-label="予算サマリー">
+          <header class="flex items-center justify-between mb-1">
             <span class="text-sm font-semibold text-gray-600">今月の残り予算</span>
             <span class="text-xs font-bold px-2 py-1 rounded-full ${statusColor} text-white shadow-sm">残り ${percentage.toFixed(0)}%</span>
-          </div>
+          </header>
           <div class="mt-4 bg-gray-200/60 rounded-full h-10 overflow-hidden relative shadow-inner">
             <div class="h-full ${statusColor} transition-all duration-1000 ease-out" style="width: ${percentage}%;"></div>
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
@@ -337,14 +340,14 @@
               ${currentSpecialIncome > 0 ? `<div class="text-blue-600">特別収入: +${formatCurrency(currentSpecialIncome)}</div>` : ''}
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 shrink-0">
+        <section class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 shrink-0" aria-label="記録フォーム">
           <form id="home-expense-form" class="space-y-3">
-            <div class="flex bg-gray-100 rounded-lg p-1 mb-1">
+            <fieldset class="flex bg-gray-100 rounded-lg p-1 mb-1">
               <button type="button" class="flex-1 py-1.5 text-sm font-bold rounded-md transition-colors transaction-type-btn ${currentTransactionType === 'expense' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}" data-type="expense">支出</button>
               <button type="button" class="flex-1 py-1.5 text-sm font-bold rounded-md transition-colors transaction-type-btn ${currentTransactionType === 'income' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}" data-type="income">収入</button>
-            </div>
+            </fieldset>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 font-bold">¥</span></div>
               <input type="number" id="home-amount" placeholder="金額を入力" class="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-${currentTransactionType === 'expense' ? 'emerald' : 'blue'}-500 font-bold text-lg" required />
@@ -358,7 +361,7 @@
               <i data-lucide="${currentTransactionType === 'expense' ? 'check-circle' : 'plus-circle'}" class="w-5 h-5 mr-2"></i>${currentTransactionType === 'expense' ? '支出を記録する' : '収入を記録する'}
             </button>
           </form>
-        </div>`;
+        </section>`;
     };
 
     const renderHistoryHTML = (currentCycle) => {
@@ -394,18 +397,18 @@
       let subtotalsHTML = '';
       if (sortedVariable.length > 0 || sortedFixed.length > 0 || sortedIncome.length > 0) {
         subtotalsHTML = `
-          <div class="border-t border-gray-100 pt-3 mt-4 text-left">
-            <div class="text-xs text-gray-500 font-bold mb-3">カテゴリ別小計</div>
+          <section class="border-t border-gray-100 pt-3 mt-4 text-left" aria-label="カテゴリ別小計">
+            <h3 class="text-xs text-gray-500 font-bold mb-3">カテゴリ別小計</h3>
             <div class="space-y-3">
               ${sortedVariable.length > 0 ? `
-              <div class="bg-emerald-50/70 rounded-xl p-3 border border-emerald-100/50 shadow-sm">
-                <div class="flex justify-between items-center text-sm font-bold text-emerald-800 border-b border-emerald-200/50 pb-2 mb-2">
+              <article class="bg-emerald-50/70 rounded-xl p-3 border border-emerald-100/50 shadow-sm">
+                <header class="flex justify-between items-center text-sm font-bold text-emerald-800 border-b border-emerald-200/50 pb-2 mb-2">
                   <span>変動費</span><span>${formatCurrency(totalVariable)}</span>
-                </div>
+                </header>
                 <div class="space-y-1.5 pl-1">
                   ${sortedVariable.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-emerald-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span></div>`).join('')}
                 </div>
-              </div>` : ''}
+              </article>` : ''}
               ${sortedFixed.length > 0 ? `
               <details class="group bg-indigo-50/70 rounded-xl border border-indigo-100/50 shadow-sm">
                 <summary class="flex justify-between items-center cursor-pointer list-none p-3 font-bold text-sm text-indigo-800 [&::-webkit-details-marker]:hidden">
@@ -421,78 +424,78 @@
                 </div>
               </details>` : ''}
               ${sortedIncome.length > 0 ? `
-              <div class="bg-blue-50/70 rounded-xl p-3 border border-blue-100/50 shadow-sm">
-                <div class="flex justify-between items-center text-sm font-bold text-blue-800 border-b border-blue-200/50 pb-2 mb-2">
+              <article class="bg-blue-50/70 rounded-xl p-3 border border-blue-100/50 shadow-sm">
+                <header class="flex justify-between items-center text-sm font-bold text-blue-800 border-b border-blue-200/50 pb-2 mb-2">
                   <span>収入</span><span>+${formatCurrency(totalIncomeCat)}</span>
-                </div>
+                </header>
                 <div class="space-y-1.5 pl-1">
-                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">${formatCurrency(cat.amount)}</span></div>`).join('')}
+                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
                 </div>
-              </div>` : ''}
+              </article>` : ''}
             </div>
-          </div>`;
+          </section>`;
       }
 
       let listHTML = cycleExpenses.length === 0 ? `<div class="text-center text-gray-400 mt-10">まだ記録がありません</div>` : 
-        `<div class="space-y-3">` + cycleExpenses.map(exp => {
+        `<div class="space-y-3" role="list">` + cycleExpenses.map(exp => {
           const isIncome = exp.type === 'income';
           const icon = exp.type === 'fixed' ? '<i data-lucide="receipt" class="w-5 h-5"></i>' : isIncome ? '<i data-lucide="coins" class="w-5 h-5"></i>' : '<i data-lucide="list" class="w-5 h-5"></i>';
           const iconBg = exp.type === 'fixed' || isIncome ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600';
           const name = exp.type === 'fixed' ? (exp.name || getCategoryName(exp.categoryId)) : getCategoryName(exp.categoryId);
           const memoHTML = exp.memo ? `<div class="text-xs text-gray-500 mt-1">${escapeHTML(exp.memo)}</div>` : '';
           return `
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+            <article class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center" role="listitem">
               <div class="flex items-center min-w-0 flex-1">
                 <div class="p-2 rounded-lg mr-3 ${iconBg} shrink-0">${icon}</div>
                 <div class="min-w-0 pr-2">
-                  <div class="font-bold text-gray-800 truncate">${escapeHTML(name)}</div>
+                  <h4 class="font-bold text-gray-800 truncate">${escapeHTML(name)}</h4>
                   <div class="text-xs text-gray-400">${exp.date}${exp.isAutoAdded ? ' (自動)' : ''}</div>
                   ${memoHTML}
                 </div>
               </div>
               <div class="flex items-center shrink-0">
                 <span class="font-bold ${isIncome ? 'text-blue-600' : 'text-gray-800'} mr-3">${isIncome ? '+' : '-'}${formatCurrency(exp.amount)}</span>
-                <button class="edit-exp-btn text-gray-300 hover:text-blue-500 transition-colors mr-2" data-id="${exp.id}"><i data-lucide="edit-2" class="w-4 h-4 pointer-events-none"></i></button>
-                <button class="del-exp-btn text-gray-300 hover:text-red-500 transition-colors" data-id="${exp.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                <button class="edit-exp-btn text-gray-300 hover:text-blue-500 transition-colors mr-2" data-id="${exp.id}" aria-label="編集"><i data-lucide="edit-2" class="w-4 h-4 pointer-events-none"></i></button>
+                <button class="del-exp-btn text-gray-300 hover:text-red-500 transition-colors" data-id="${exp.id}" aria-label="削除"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
               </div>
-            </div>`;
+            </article>`;
         }).join('') + `</div>`;
 
       return `
         <h2 class="text-lg font-bold text-gray-800 mb-4">${currentCycle.year}年${currentCycle.month}月度の履歴</h2>
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 text-center">
+        <section class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 text-center" aria-label="月間サマリー">
           <div class="flex justify-around mb-2">
             <div><div class="text-sm text-gray-500">支出合計</div><div class="text-2xl font-bold text-gray-800">${formatCurrency(totalExpense)}</div></div>
             <div><div class="text-sm text-gray-500">収入合計</div><div class="text-2xl font-bold text-blue-600">${formatCurrency(totalIncome)}</div></div>
           </div>
           ${subtotalsHTML}
-        </div>
-        <div class="flex justify-between items-center mb-3">
+        </section>
+        <header class="flex justify-between items-center mb-3">
           <h3 class="text-sm font-bold text-gray-500">一覧</h3>
           ${cycleExpenses.length > 0 ? `<button id="export-csv-btn" class="text-emerald-600 text-sm flex items-center font-bold hover:text-emerald-700 bg-emerald-50 px-2 py-1 rounded"><i data-lucide="download" class="w-4 h-4 mr-1"></i>エクスポート</button>` : ''}
-        </div>
+        </header>
         ${listHTML}
       `;
     };
 
     const renderTodoHTML = () => {
       let listHTML = todoList.map(todo => `
-        <div class="todo-item flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100 mb-2" id="todo-item-${todo.id}">
+        <li class="todo-item flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100 mb-2" id="todo-item-${todo.id}">
           <label class="flex items-center flex-1 cursor-pointer">
             <input type="checkbox" class="todo-check w-5 h-5 text-emerald-500 rounded border-gray-300 focus:ring-emerald-500 mr-3" data-id="${todo.id}">
             <span class="text-sm text-gray-800 font-medium">${escapeHTML(todo.text)}</span>
           </label>
-        </div>
+        </li>
       `).join('');
-      if (todoList.length === 0) listHTML = `<div class="text-center text-gray-400 mt-10">タスクはありません</div>`;
+      if (todoList.length === 0) listHTML = `<li class="text-center text-gray-400 mt-10">タスクはありません</li>`;
 
       return `
         <h2 class="text-lg font-bold text-gray-800 mb-4">チェックリスト</h2>
-        <form id="add-todo-form" class="flex space-x-2 mb-6">
+        <form id="add-todo-form" class="flex space-x-2 mb-6" aria-label="タスク追加">
           <input type="text" id="new-todo-text" placeholder="項目を追加" class="flex-1 p-3 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm" required />
           <button type="submit" class="bg-emerald-500 text-white px-4 py-3 rounded-xl text-sm font-bold hover:bg-emerald-600 shadow-sm transition-colors">追加</button>
         </form>
-        <div class="todo-container">${listHTML}</div>
+        <ul class="todo-container" aria-label="タスク一覧">${listHTML}</ul>
       `;
     };
 
@@ -543,7 +546,6 @@
           <div class="w-full h-[250px] overflow-x-auto flex items-end space-x-4 pb-2 px-1 snap-x scroll-smooth custom-scrollbar">
             ${sortedMonths.map(m => {
               const heightPercentage = maxAmount > 0 ? Math.max((m.amount / maxAmount) * 100, 2) : 2; 
-              // ★ 固定費が一番下になるようにソート順を修正 (-1 を返すことで最初に配置し、flex-col-reverseで一番下に表示)
               const blocksHTML = Object.entries(m.items).sort(([a], [b]) => {
                   if (a === 'fixed') return -1; if (b === 'fixed') return 1;
                   return appData.chartGroupOrder.indexOf(a) - appData.chartGroupOrder.indexOf(b);
@@ -576,7 +578,6 @@
          .map(cat => ({ id: cat.id, name: cat.name, avg: Math.round((monthlyCategoryTotals[cat.id] || 0) / divBy) }))
          .sort((a,b) => b.avg - a.avg);
 
-      // ★ 変動費の期間テキスト生成
       let periodText = '(月平均)';
       if (uniqueCycleMonths.size > 0) {
           const minMonth = Math.min(...Array.from(uniqueCycleMonths));
@@ -585,17 +586,16 @@
       }
 
       let specialHTML = specialInThisYear.sort((a, b) => a.month - b.month).map(st => `
-        <div class="p-4 flex justify-between items-center border-b border-gray-50 last:border-0">
+        <article class="p-4 flex justify-between items-center border-b border-gray-50 last:border-0">
           <div class="flex items-center min-w-0 pr-3">
             <div class="w-8 h-8 rounded-full bg-gray-100 flex justify-center items-center font-bold text-gray-600 mr-3 text-sm shrink-0">${st.month}月</div>
-            <div class="min-w-0"><div class="font-medium text-gray-800 truncate text-sm">${escapeHTML(st.name)}</div>${st.memo ? `<div class="text-[10px] text-gray-500 truncate">${escapeHTML(st.memo)}</div>` : ''}</div>
+            <div class="min-w-0"><h4 class="font-medium text-gray-800 truncate text-sm">${escapeHTML(st.name)}</h4>${st.memo ? `<div class="text-[10px] text-gray-500 truncate">${escapeHTML(st.memo)}</div>` : ''}</div>
           </div>
           <div class="flex items-center shrink-0"><span class="font-bold ${st.type === 'income' ? 'text-blue-600' : 'text-red-600'}">${st.type === 'income' ? '+' : '-'}${formatCurrency(st.amount)}</span></div>
-        </div>
+        </article>
       `).join('');
       if (specialInThisYear.length === 0) specialHTML = `<div class="p-4 text-center text-sm text-gray-400">登録されていません</div>`;
 
-      // ★ 固定費リストと小計
       let fixedHTML = appData.fixedCosts.map(fc => `<div class="p-2 flex justify-between"><span class="text-gray-600 truncate mr-2">${escapeHTML(fc.name)}</span><span class="font-bold">${formatCurrency(fc.amount * 12)}</span></div>`).join('');
       if (appData.fixedCosts.length > 0) {
           const totalFixedAnnual = appData.fixedCosts.reduce((sum, fc) => sum + (fc.amount * 12), 0);
@@ -604,7 +604,6 @@
           fixedHTML = `<div class="p-2 text-gray-400">なし</div>`;
       }
 
-      // ★ 変動費リストと小計
       let varAvgHTML = categoryAverages.map(cat => `<div class="p-2 flex justify-between"><span class="text-gray-600 truncate mr-2">${escapeHTML(cat.name)}</span><span class="font-bold">${formatCurrency(cat.avg)}</span></div>`).join('');
       if (categoryAverages.length > 0) {
           const totalVarAvg = categoryAverages.reduce((sum, cat) => sum + cat.avg, 0);
@@ -614,89 +613,93 @@
       }
 
       return `
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative mb-4">
-          <div class="flex justify-between items-center mb-2">
+        <section class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative mb-4" aria-label="月別支出推移">
+          <header class="flex justify-between items-center mb-2">
             <h2 class="text-sm font-semibold text-gray-700 flex items-center"><i data-lucide="bar-chart-2" class="w-4 h-4 mr-2 text-emerald-500"></i>月別支出推移</h2>
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="toggle-fixed-chart" class="sr-only peer" ${includeFixedCostsInChart ? 'checked' : ''}>
               <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
               <span class="ml-2 text-xs font-medium text-gray-500">固定費を含む</span>
             </label>
-          </div>
+          </header>
           ${graphHTML}
           <div id="chart-breakdown-container" class="mt-4 bg-gray-50 rounded-xl p-3 hidden transition-all duration-300"></div>
-        </div>
+        </section>
         <div class="grid grid-cols-2 gap-4">
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i>固定費(年間)</div><div class="divide-y divide-gray-50 text-xs">${fixedHTML}</div></div>
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="trending-down" class="w-3 h-3 mr-1"></i>変動費${periodText}</div><div class="divide-y divide-gray-50 text-xs">${varAvgHTML}</div></div>
+          <section class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" aria-label="固定費一覧">
+             <header class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i>固定費(年間)</header>
+             <div class="divide-y divide-gray-50 text-xs">${fixedHTML}</div>
+          </section>
+          <section class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" aria-label="変動費平均一覧">
+             <header class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="trending-down" class="w-3 h-3 mr-1"></i>変動費${periodText}</header>
+             <div class="divide-y divide-gray-50 text-xs">${varAvgHTML}</div>
+          </section>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[250px] max-h-[320px] mt-4">
-          <div class="bg-gray-50 p-3 border-b border-gray-100 font-bold text-sm text-gray-700 flex items-center justify-between shrink-0"><div class="flex items-center"><i data-lucide="calendar" class="w-4 h-4 mr-2"></i>特別収支</div></div>
-          <div class="overflow-y-auto">${specialHTML}</div>
-        </div>
+        <section class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[250px] max-h-[320px] mt-4" aria-label="特別収支一覧">
+          <header class="bg-gray-50 p-3 border-b border-gray-100 font-bold text-sm text-gray-700 flex items-center justify-between shrink-0"><div class="flex items-center"><i data-lucide="calendar" class="w-4 h-4 mr-2"></i>特別収支</div></header>
+          <div class="overflow-y-auto" role="list">${specialHTML}</div>
+        </section>
       `;
     };
 
     const renderSettingsHTML = () => {
       const renderCatChips = (cats) => cats.map((cat, index, array) => `
-        <div class="bg-white border border-gray-200 text-gray-700 text-sm pl-3 pr-1 py-1 rounded-full flex items-center shadow-sm max-w-full">
+        <article class="bg-white border border-gray-200 text-gray-700 text-sm pl-3 pr-1 py-1 rounded-full flex items-center shadow-sm max-w-full">
           <span class="truncate mr-2 font-medium">${escapeHTML(cat.name)}</span>
           <div class="flex items-center space-x-1 border-l border-gray-100 pl-1 shrink-0">
-            <button type="button" class="open-del-cat-btn text-gray-400 hover:text-red-500 p-1 ml-1 transition-colors" data-id="${cat.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+            <button type="button" class="open-del-cat-btn text-gray-400 hover:text-red-500 p-1 ml-1 transition-colors" data-id="${cat.id}" aria-label="削除"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
           </div>
-        </div>
+        </article>
       `).join('');
 
       let varCatChipsHTML = renderCatChips(appData.categories.filter(c => c.type === 'variable'));
       let incCatChipsHTML = renderCatChips(appData.categories.filter(c => c.type === 'income'));
 
       let fixedHTML = appData.fixedCosts.map(fc => `
-        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg gap-2">
-          <div class="min-w-0 flex-1"><div class="font-medium text-sm truncate">${escapeHTML(fc.name)}</div><div class="text-xs text-gray-500 mt-0.5 truncate">${fc.withdrawalDay === 99 ? '月末' : `${fc.withdrawalDay}日`}引き落とし</div></div>
-          <div class="flex items-center shrink-0"><div class="font-bold text-gray-700 mr-3">${formatCurrency(fc.amount)}</div><button type="button" class="del-fixed-btn text-gray-300 hover:text-red-500" data-id="${fc.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button></div>
-        </div>
+        <article class="flex justify-between items-center p-3 bg-gray-50 rounded-lg gap-2">
+          <div class="min-w-0 flex-1"><h4 class="font-medium text-sm truncate">${escapeHTML(fc.name)}</h4><div class="text-xs text-gray-500 mt-0.5 truncate">${fc.withdrawalDay === 99 ? '月末' : `${fc.withdrawalDay}日`}引き落とし</div></div>
+          <div class="flex items-center shrink-0"><div class="font-bold text-gray-700 mr-3">${formatCurrency(fc.amount)}</div><button type="button" class="del-fixed-btn text-gray-300 hover:text-red-500" data-id="${fc.id}" aria-label="削除"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button></div>
+        </article>
       `).join('');
 
       let fixedFormHTML = showFixedForm ? `
         <form id="add-fixed-form" class="mt-4 p-3 bg-emerald-50 rounded-lg space-y-3">
           <input type="text" id="new-fixed-name" placeholder="固定費名" class="w-full p-2 text-sm border rounded" required />
-          <div class="grid grid-cols-2 gap-2"><input type="number" id="new-fixed-amount" placeholder="金額" class="w-full p-2 text-sm border rounded" required /><select id="new-fixed-day" class="w-full p-2 text-sm border rounded bg-white" required><option value="">引落日</option>${Array.from({length: 31}, (_, i) => `<option value="${i+1}">${i+1}日</option>`).join('')}<option value="99">月末</option></select></div>
+          <fieldset class="grid grid-cols-2 gap-2"><input type="number" id="new-fixed-amount" placeholder="金額" class="w-full p-2 text-sm border rounded" required /><select id="new-fixed-day" class="w-full p-2 text-sm border rounded bg-white" required><option value="">引落日</option>${Array.from({length: 31}, (_, i) => `<option value="${i+1}">${i+1}日</option>`).join('')}<option value="99">月末</option></select></fieldset>
           <div class="grid grid-cols-2 gap-2"><button type="submit" class="w-full bg-emerald-500 text-white text-sm py-2 rounded">追加</button><button type="button" id="cancel-fixed-form-btn" class="w-full bg-gray-300 text-gray-700 text-sm py-2 rounded">キャンセル</button></div>
         </form>
       ` : `<button id="toggle-fixed-form-btn" class="mt-4 w-full border border-dashed border-gray-300 text-gray-500 py-2 rounded-lg text-sm hover:bg-gray-50 flex justify-center items-center"><i data-lucide="plus" class="w-4 h-4 mr-1"></i> 固定費を追加</button>`;
 
       let specialHTML = appData.specialTransactions.sort((a, b) => b.year - a.year || a.month - b.month).map(st => `
-        <div class="p-3 flex justify-between items-center bg-gray-50 gap-2 border-b border-gray-100 last:border-0">
-          <div class="flex items-center min-w-0 flex-1"><span class="text-[10px] font-bold text-gray-600 mr-2 bg-white px-2 py-1 rounded shadow-sm shrink-0">${st.year}年${st.month}月</span><div class="min-w-0 pr-2"><div class="text-sm font-medium text-gray-800 truncate">${escapeHTML(st.name)}</div>${st.memo ? `<div class="text-[10px] text-gray-500 truncate">${escapeHTML(st.memo)}</div>` : ''}</div></div>
-          <div class="flex items-center shrink-0"><span class="text-sm font-bold mr-3 ${st.type === 'income' ? 'text-blue-600' : 'text-red-600'}">${st.type === 'income' ? '+' : '-'}${formatCurrency(st.amount)}</span><button type="button" class="edit-special-btn text-gray-400 hover:text-blue-500 mr-2" data-id="${st.id}"><i data-lucide="edit-2" class="w-4 h-4 pointer-events-none"></i></button><button type="button" class="del-special-btn text-gray-400 hover:text-red-500" data-id="${st.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button></div>
-        </div>
+        <article class="p-3 flex justify-between items-center bg-gray-50 gap-2 border-b border-gray-100 last:border-0">
+          <div class="flex items-center min-w-0 flex-1"><span class="text-[10px] font-bold text-gray-600 mr-2 bg-white px-2 py-1 rounded shadow-sm shrink-0">${st.year}年${st.month}月</span><div class="min-w-0 pr-2"><h4 class="text-sm font-medium text-gray-800 truncate">${escapeHTML(st.name)}</h4>${st.memo ? `<div class="text-[10px] text-gray-500 truncate">${escapeHTML(st.memo)}</div>` : ''}</div></div>
+          <div class="flex items-center shrink-0"><span class="text-sm font-bold mr-3 ${st.type === 'income' ? 'text-blue-600' : 'text-red-600'}">${st.type === 'income' ? '+' : '-'}${formatCurrency(st.amount)}</span><button type="button" class="edit-special-btn text-gray-400 hover:text-blue-500 mr-2" data-id="${st.id}" aria-label="編集"><i data-lucide="edit-2" class="w-4 h-4 pointer-events-none"></i></button><button type="button" class="del-special-btn text-gray-400 hover:text-red-500" data-id="${st.id}" aria-label="削除"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button></div>
+        </article>
       `).join('');
       if (appData.specialTransactions.length === 0) specialHTML = `<div class="p-3 text-center text-sm text-gray-400">登録されていません</div>`;
       const currY = new Date().getFullYear();
 
       let groupConfigHTML = `
-        <div id="chart-group-list" class="grid grid-cols-1 gap-2 mb-4">
+        <ul id="chart-group-list" class="grid grid-cols-1 gap-2 mb-4" role="list">
           ${appData.chartGroupOrder.map((gId) => `
-            <div class="flex items-center border border-gray-200 rounded-xl p-1 bg-gray-50 shadow-sm" data-id="${gId}">
+            <li class="flex items-center border border-gray-200 rounded-xl p-1 bg-gray-50 shadow-sm" data-id="${gId}">
                <div class="cg-drag-handle p-2 text-gray-400 cursor-grab touch-none"><i data-lucide="grip-vertical" class="w-5 h-5 pointer-events-none"></i></div>
                <div class="w-4 h-4 rounded-full ${appData.chartGroups[gId].color} mr-2 shrink-0 shadow-inner"></div>
                <input type="text" class="w-full p-1.5 text-sm bg-transparent outline-none font-medium text-gray-700 update-group-name" data-gid="${gId}" value="${escapeHTML(appData.chartGroups[gId].name)}" placeholder="グループ名">
-            </div>
+            </li>
           `).join('')}
-        </div>
+        </ul>
         <h4 class="text-xs font-bold text-gray-500 mb-2 border-b pb-1 flex items-center">カテゴリの振り分け</h4>
-        <div class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+        <ul class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar" role="list">
           ${appData.categories.filter(c => c.type === 'variable').map(c => `
-             <div class="flex justify-between items-center text-sm p-2 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+             <li class="flex justify-between items-center text-sm p-2 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
                 <span class="truncate pr-2 font-medium text-gray-700">${escapeHTML(c.name)}</span>
-                <select class="p-1.5 border border-gray-200 rounded-lg bg-white text-xs shrink-0 change-cat-group font-bold text-gray-600 outline-none focus:ring-2 focus:ring-emerald-500" data-catid="${c.id}">
-                   ${appData.chartGroupOrder.map(gId => `
-                      <option value="${gId}" ${c.groupId === gId ? 'selected' : ''}>${escapeHTML(appData.chartGroups[gId].name || '未設定')}</option>
-                   `).join('')}
+                <select class="p-1.5 border border-gray-200 rounded-lg bg-white text-xs shrink-0 change-cat-group font-bold text-gray-600 outline-none focus:ring-2 focus:ring-emerald-500" data-catid="${c.id}" aria-label="グループ選択">
+                   ${appData.chartGroupOrder.map(gId => `<option value="${gId}" ${c.groupId === gId ? 'selected' : ''}>${escapeHTML(appData.chartGroups[gId].name || '未設定')}</option>`).join('')}
                 </select>
-             </div>
+             </li>
           `).join('')}
-        </div>
+        </ul>
       `;
 
       const sectionsData = {
@@ -704,27 +707,22 @@
           title: 'アカウント設定',
           html: `
             <div class="mb-3 flex justify-between items-center"><span class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-full">${currentUser?.email}</span></div>
-            <button id="migrate-gas-btn" class="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 py-3 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors mb-3 flex items-center justify-center shadow-sm">
-              <i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ
-            </button>
-            <button id="logout-btn" class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center justify-center">
-              <i data-lucide="log-out" class="w-4 h-4 mr-2"></i>ログアウト
-            </button>
+            <button id="migrate-gas-btn" class="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 py-3 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors mb-3 flex items-center justify-center shadow-sm"><i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ</button>
+            <button id="logout-btn" class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center justify-center"><i data-lucide="log-out" class="w-4 h-4 mr-2"></i>ログアウト</button>
           `
         },
-        budget: { title: '予算設定', html: `<input type="number" id="budget-month-input" value="${escapeHTML(appData.budget.monthly)}" class="w-full p-2 border rounded-lg text-sm mb-2" /><button id="save-budget-btn" class="w-full bg-gray-800 text-white py-2 rounded-lg font-medium text-sm">保存する</button>` },
+        budget: { title: '予算設定', html: `<input type="number" id="budget-month-input" value="${escapeHTML(appData.budget.monthly)}" aria-label="月次予算" class="w-full p-2 border rounded-lg text-sm mb-2" /><button id="save-budget-btn" class="w-full bg-gray-800 text-white py-2 rounded-lg font-medium text-sm">保存する</button>` },
         chartGroup: { title: 'グラフ表示グループ設定', html: groupConfigHTML },
         category: { title: 'カテゴリ設定', html: `<div class="mb-5"><h4 class="text-sm font-bold text-gray-700 mb-2">支出カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${varCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="variable"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-emerald-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div><div><h4 class="text-sm font-bold text-gray-700 mb-2">収入カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${incCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="income"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-blue-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div>` },
-        fixed: { title: '固定費設定', html: `<div class="space-y-3">${fixedHTML}</div>${fixedFormHTML}` },
-        special: { title: '特別収支設定', html: `<div class="mb-4 border border-gray-100 rounded-lg max-h-48 overflow-y-auto">${specialHTML}</div><form id="add-special-form" class="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100"><div class="grid grid-cols-3 gap-2"><select id="st-year" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="${currY}">${currY}年</option><option value="${currY + 1}">${currY + 1}年</option></select><select id="st-month" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white">${Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}月</option>`).join('')}</select><select id="st-type" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="expense">支出</option><option value="income">収入</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" id="st-name" placeholder="項目名" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /><input type="number" id="st-amount" placeholder="金額" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /></div><input type="text" id="st-memo" placeholder="メモ (任意)" class="w-full p-2 border border-blue-200 rounded-lg text-sm" /><button type="submit" class="w-full bg-blue-600 text-white text-sm py-2 rounded-lg font-medium">追加</button></form>` }
+        fixed: { title: '固定費設定', html: `<div class="space-y-3" role="list">${fixedHTML}</div>${fixedFormHTML}` },
+        special: { title: '特別収支設定', html: `<div class="mb-4 border border-gray-100 rounded-lg max-h-48 overflow-y-auto" role="list">${specialHTML}</div><form id="add-special-form" class="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100"><fieldset class="grid grid-cols-3 gap-2"><select id="st-year" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="${currY}">${currY}年</option><option value="${currY + 1}">${currY + 1}年</option></select><select id="st-month" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white">${Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}月</option>`).join('')}</select><select id="st-type" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="expense">支出</option><option value="income">収入</option></select></fieldset><fieldset class="grid grid-cols-2 gap-2"><input type="text" id="st-name" placeholder="項目名" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /><input type="number" id="st-amount" placeholder="金額" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /></fieldset><input type="text" id="st-memo" placeholder="メモ (任意)" class="w-full p-2 border border-blue-200 rounded-lg text-sm" /><button type="submit" class="w-full bg-blue-600 text-white text-sm py-2 rounded-lg font-medium">追加</button></form>` }
       };
 
       const secNames = { account: 'アカウント', budget: '予算', chartGroup: 'グラフ', category: 'カテゴリ', fixed: '固定費', special: '特別収支' };
-      // ★ 隙間のないヘッダーメニュー
       const quickJumpHTML = `
-        <div class="sticky top-0 z-30 bg-gray-50 px-4 pt-4 pb-3 border-b border-gray-200 flex overflow-x-auto gap-2 custom-scrollbar shadow-sm">
+        <nav class="sticky top-0 z-30 bg-gray-50 px-4 pt-4 pb-3 border-b border-gray-200 flex overflow-x-auto gap-2 custom-scrollbar shadow-sm" aria-label="設定メニュー内リンク">
           ${appData.settingsOrder.map(secId => `<button type="button" class="shrink-0 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-100" onclick="document.getElementById('sec-${secId}').scrollIntoView({behavior:'smooth', block:'start'})">${secNames[secId]}</button>`).join('')}
-        </div>
+        </nav>
       `;
 
       return quickJumpHTML + `
@@ -733,10 +731,10 @@
             const sec = sectionsData[secId];
             return `
               <section id="sec-${secId}" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 scroll-mt-20" data-id="${secId}">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <header class="flex justify-between items-center mb-4 border-b pb-2">
                   <h3 class="font-bold text-gray-800">${sec.title}</h3>
-                  <div class="sec-drag-handle p-1 text-gray-400 cursor-grab touch-none"><i data-lucide="grip-horizontal" class="w-5 h-5 pointer-events-none"></i></div>
-                </div>
+                  <div class="sec-drag-handle p-1 text-gray-400 cursor-grab touch-none" aria-label="並べ替えハンドル"><i data-lucide="grip-horizontal" class="w-5 h-5 pointer-events-none"></i></div>
+                </header>
                 ${sec.html}
               </section>
             `;
@@ -753,7 +751,7 @@
         const targetCat = appData.categories.find(c => String(c.id) === String(deleteCatModalState.catId));
         const transferCategories = appData.categories.filter(c => c.type === targetCat?.type && String(c.id) !== String(deleteCatModalState.catId));
         let optionsHTML = `<option value="">未選択にする</option>` + transferCategories.map(c => `<option value="${c.id}">${escapeHTML(c.name)} に変更</option>`).join('');
-        modalHTML += `<div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">ラベル削除</h3><div class="mb-6"><select id="transfer-cat-select" class="w-full p-3 border rounded-xl text-sm">${optionsHTML}</select></div><div class="flex space-x-3"><button id="close-cat-modal-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button id="exec-del-cat-btn" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-sm">削除</button></div></div></div>`;
+        modalHTML += `<div role="dialog" aria-modal="true" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><article class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">ラベル削除</h3><div class="mb-6"><select id="transfer-cat-select" class="w-full p-3 border rounded-xl text-sm" aria-label="変更先のラベル">${optionsHTML}</select></div><div class="flex space-x-3"><button id="close-cat-modal-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button id="exec-del-cat-btn" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-sm">削除</button></div></article></div>`;
       }
 
       if (editExpenseModalState.isOpen) {
@@ -762,8 +760,8 @@
           const isFixed = exp.type === 'fixed';
           let catOptions = isFixed ? '' : appData.categories.filter(c => c.type === exp.type).map(c => `<option value="${c.id}" ${String(c.id) === String(exp.categoryId) ? 'selected' : ''}>${escapeHTML(c.name)}</option>`).join('');
           modalHTML += `
-            <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-              <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div role="dialog" aria-modal="true" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+              <article class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
                 <h3 class="font-bold mb-4">記録の編集</h3>
                 <form id="edit-expense-form" class="space-y-4">
                   <input type="hidden" id="edit-exp-id" value="${exp.id}">
@@ -773,7 +771,7 @@
                   <div><label class="block text-xs mb-1">メモ</label><input type="text" id="edit-exp-memo" value="${escapeHTML(exp.memo || '')}" class="w-full p-2 border rounded-xl"></div>
                   <div class="flex space-x-3"><button type="button" id="close-edit-exp-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button type="submit" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">保存</button></div>
                 </form>
-              </div>
+              </article>
             </div>`;
         }
       }
@@ -783,19 +781,19 @@
         if (st) {
           const currY = new Date().getFullYear();
           modalHTML += `
-            <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"><h3 class="font-bold mb-4">特別収支の編集</h3><form id="edit-special-form" class="space-y-4">
+            <div role="dialog" aria-modal="true" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><article class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"><h3 class="font-bold mb-4">特別収支の編集</h3><form id="edit-special-form" class="space-y-4">
               <input type="hidden" id="edit-st-id" value="${st.id}">
-              <div class="grid grid-cols-2 gap-2"><div><label class="block text-xs mb-1">年</label><select id="edit-st-year" class="w-full p-2 border rounded-xl"><option value="${currY}" ${st.year === currY ? 'selected' : ''}>${currY}年</option><option value="${currY + 1}" ${st.year === currY + 1 ? 'selected' : ''}>${currY + 1}年</option></select></div><div><label class="block text-xs mb-1">月</label><select id="edit-st-month" class="w-full p-2 border rounded-xl">${Array.from({length: 12}, (_, i) => `<option value="${i+1}" ${st.month === i+1 ? 'selected' : ''}>${i+1}月</option>`).join('')}</select></div></div>
-              <div class="grid grid-cols-2 gap-2"><div><label class="block text-xs mb-1">種類</label><select id="edit-st-type" class="w-full p-2 border rounded-xl"><option value="expense" ${st.type === 'expense' ? 'selected' : ''}>支出</option><option value="income" ${st.type === 'income' ? 'selected' : ''}>収入</option></select></div><div><label class="block text-xs mb-1">項目名</label><input type="text" id="edit-st-name" value="${escapeHTML(st.name)}" class="w-full p-2 border rounded-xl" required></div></div>
+              <fieldset class="grid grid-cols-2 gap-2"><div><label class="block text-xs mb-1">年</label><select id="edit-st-year" class="w-full p-2 border rounded-xl"><option value="${currY}" ${st.year === currY ? 'selected' : ''}>${currY}年</option><option value="${currY + 1}" ${st.year === currY + 1 ? 'selected' : ''}>${currY + 1}年</option></select></div><div><label class="block text-xs mb-1">月</label><select id="edit-st-month" class="w-full p-2 border rounded-xl">${Array.from({length: 12}, (_, i) => `<option value="${i+1}" ${st.month === i+1 ? 'selected' : ''}>${i+1}月</option>`).join('')}</select></div></fieldset>
+              <fieldset class="grid grid-cols-2 gap-2"><div><label class="block text-xs mb-1">種類</label><select id="edit-st-type" class="w-full p-2 border rounded-xl"><option value="expense" ${st.type === 'expense' ? 'selected' : ''}>支出</option><option value="income" ${st.type === 'income' ? 'selected' : ''}>収入</option></select></div><div><label class="block text-xs mb-1">項目名</label><input type="text" id="edit-st-name" value="${escapeHTML(st.name)}" class="w-full p-2 border rounded-xl" required></div></fieldset>
               <div><label class="block text-xs mb-1">金額</label><input type="number" id="edit-st-amount" value="${escapeHTML(st.amount)}" class="w-full p-2 border rounded-xl" required></div>
               <div><label class="block text-xs mb-1">メモ</label><input type="text" id="edit-st-memo" value="${escapeHTML(st.memo || '')}" class="w-full p-2 border rounded-xl"></div>
               <div class="flex space-x-3"><button type="button" id="close-edit-st-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button type="submit" class="flex-1 bg-blue-500 text-white py-3 rounded-xl font-bold text-sm">保存</button></div>
-            </form></div></div>`;
+            </form></article></div>`;
         }
       }
 
-      if (confirmModalState.isOpen) modalHTML += `<div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">確認</h3><p class="text-sm mb-6">${confirmModalState.message}</p><div class="flex space-x-3"><button id="confirm-cancel-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button id="confirm-ok-btn" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">OK</button></div></div></div>`;
-      if (alertModalState.isOpen) modalHTML += `<div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">お知らせ</h3><p class="text-sm mb-6">${alertModalState.message}</p><button id="alert-ok-btn" class="w-full bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">OK</button></div></div>`;
+      if (confirmModalState.isOpen) modalHTML += `<div role="dialog" aria-modal="true" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><article class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">確認</h3><p class="text-sm mb-6">${confirmModalState.message}</p><div class="flex space-x-3"><button id="confirm-cancel-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button id="confirm-ok-btn" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">OK</button></div></article></div>`;
+      if (alertModalState.isOpen) modalHTML += `<div role="dialog" aria-modal="true" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><article class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">お知らせ</h3><p class="text-sm mb-6">${alertModalState.message}</p><button id="alert-ok-btn" class="w-full bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">OK</button></article></div>`;
 
       container.innerHTML = modalHTML;
     };
@@ -924,10 +922,10 @@
           `).join('');
           
           container.innerHTML = `
-              <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center"><span class="w-3 h-3 rounded-full ${info.color} mr-2 shadow-inner"></span><span class="text-sm font-bold text-gray-800">${year}年${month}月 - ${escapeHTML(info.name)}</span></div>
-                  <button type="button" id="close-chart-breakdown" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-4 h-4"></i></button>
-              </div>
+              <header class="flex items-center justify-between mb-2">
+                  <div class="flex items-center"><span class="w-3 h-3 rounded-full ${info.color} mr-2 shadow-inner"></span><h3 class="text-sm font-bold text-gray-800">${year}年${month}月 - ${escapeHTML(info.name)}</h3></div>
+                  <button type="button" id="close-chart-breakdown" class="text-gray-400 hover:text-gray-600" aria-label="閉じる"><i data-lucide="x" class="w-4 h-4"></i></button>
+              </header>
               <div class="text-[10px] text-gray-500 mb-2 leading-relaxed border-b border-dashed border-gray-200 pb-2">構成カテゴリ：${groupCats.length > 0 ? groupCats.map(c=>escapeHTML(c.name)).join('、') : 'なし'}</div>
               <div class="bg-white rounded-lg p-2 shadow-sm border border-gray-100">
                   ${listHTML || '<div class="text-xs text-gray-400 py-2 text-center">データがありません</div>'}
