@@ -65,15 +65,17 @@
     import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
     // ==========================================
-    // ★ Firebase Config (apiKey: "AIzaSyAW0RzaHk4UJmOzT5Yej23YWcJsVcMVPVA",
-    authDomain: "kakeibo-8ffc5.firebaseapp.com",
-    projectId: "kakeibo-8ffc5",
-    storageBucket: "kakeibo-8ffc5.firebasestorage.app",
-    messagingSenderId: "480038367159",
-    appId: "1:480038367159:web:a11b9feaf863d5e0f8c232",
-    measurementId: "G-CDQSRV1M3N") ★
+    // ★ Firebase Config ★
     // ==========================================
-    const firebaseConfig = {};
+    const firebaseConfig = {
+      apiKey: "AIzaSyAW0RzaHk4UJmOzT5Yej23YWcJsVcMVPVA",
+      authDomain: "kakeibo-8ffc5.firebaseapp.com",
+      projectId: "kakeibo-8ffc5",
+      storageBucket: "kakeibo-8ffc5.firebasestorage.app",
+      messagingSenderId: "480038367159",
+      appId: "1:480038367159:web:a11b9feaf863d5e0f8c232",
+      measurementId: "G-CDQSRV1M3N"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
