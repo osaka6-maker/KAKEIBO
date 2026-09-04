@@ -180,9 +180,20 @@
           'g1': { name: '食費', color: 'bg-orange-400' },
           'g2': { name: '生活・趣味', color: 'bg-blue-500' },
           'g3': { name: 'その他', color: 'bg-gray-400' },
-          'g4': { name: '未割り当て', color: 'bg-emerald-500' }
+          'g4': { name: '未割り当て', color: 'bg-emerald-500' },
+          'g5': { name: 'グループ5', color: 'bg-purple-500' },
+          'g6': { name: 'グループ6', color: 'bg-pink-500' }
         };
+      } else {
+        if (!appData.chartGroups['g5']) appData.chartGroups['g5'] = { name: 'グループ5', color: 'bg-purple-500' };
+        if (!appData.chartGroups['g6']) appData.chartGroups['g6'] = { name: 'グループ6', color: 'bg-pink-500' };
       }
+      if (!appData.chartGroupOrder) appData.chartGroupOrder = ['g1', 'g2', 'g3', 'g4', 'g5', 'g6'];
+      
+      if (!appData.settingsOrder || appData.settingsOrder.length !== 6) {
+        appData.settingsOrder = ['account', 'budget', 'chartGroup', 'category', 'fixed', 'special'];
+      }
+
       appData.categories.forEach(c => {
         if (c.type === 'variable' && !c.groupId) {
           if (['スーパー', '外食', 'コンビニ'].some(kw => c.name.includes(kw))) c.groupId = 'g1';
@@ -411,7 +422,7 @@
                   <span>収入</span><span>+${formatCurrency(totalIncomeCat)}</span>
                 </div>
                 <div class="space-y-1.5 pl-1">
-                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
+                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">${formatCurrency(cat.amount)}</span></div>`).join('')}
                 </div>
               </div>` : ''}
             </div>
@@ -487,7 +498,6 @@
       
       const monthlyTotals = {};
       const usedGroups = new Set();
-      
       const catToGroup = {};
       appData.categories.forEach(c => catToGroup[c.id] = c.groupId || 'g3');
 
@@ -515,7 +525,10 @@
       let graphHTML = '';
       if (sortedMonths.length > 0) {
         const maxAmount = Math.max(...sortedMonths.map(m => m.amount));
-        const legendItemsHTML = Array.from(usedGroups).map(grpId => {
+        const legendItemsHTML = Array.from(usedGroups).sort((a,b) => {
+            if (a === 'fixed') return 100; if (b === 'fixed') return -100;
+            return appData.chartGroupOrder.indexOf(a) - appData.chartGroupOrder.indexOf(b);
+        }).map(grpId => {
           const info = getGroupInfo(grpId);
           if(!info.name) return '';
           return `<div class="flex items-center mr-3 mb-1"><span class="w-2.5 h-2.5 rounded-full ${info.color} mr-1"></span><span class="text-[10px] text-gray-500">${escapeHTML(info.name)}</span></div>`;
@@ -526,7 +539,10 @@
           <div class="w-full h-[250px] overflow-x-auto flex items-end space-x-4 pb-2 px-1 snap-x scroll-smooth custom-scrollbar">
             ${sortedMonths.map(m => {
               const heightPercentage = maxAmount > 0 ? Math.max((m.amount / maxAmount) * 100, 2) : 2; 
-              const blocksHTML = Object.entries(m.items).sort(([, a], [, b]) => b - a).map(([grpId, amt]) => {
+              const blocksHTML = Object.entries(m.items).sort(([a], [b]) => {
+                  if (a === 'fixed') return 1; if (b === 'fixed') return -1;
+                  return appData.chartGroupOrder.indexOf(a) - appData.chartGroupOrder.indexOf(b);
+              }).map(([grpId, amt]) => {
                  const info = getGroupInfo(grpId);
                  return `<div class="w-full ${info.color} chart-block-btn cursor-pointer transition-opacity hover:opacity-75" style="height: ${(amt / m.amount) * 100}%;" data-year="${m.year}" data-month="${m.month}" data-group="${grpId}"></div>`;
               }).join('');
@@ -633,11 +649,13 @@
       const currY = new Date().getFullYear();
 
       let groupConfigHTML = `
-        <div class="grid grid-cols-2 gap-3 mb-4">
-          ${['g1', 'g2', 'g3', 'g4'].map(gId => `
+        <div class="grid grid-cols-1 gap-2 mb-4">
+          ${appData.chartGroupOrder.map((gId, index, arr) => `
             <div class="flex items-center border border-gray-200 rounded-xl p-1 bg-gray-50 shadow-sm">
                <div class="w-4 h-4 rounded-full ${appData.chartGroups[gId].color} mx-2 shrink-0 shadow-inner"></div>
                <input type="text" class="w-full p-1.5 text-sm bg-transparent outline-none font-medium text-gray-700 update-group-name" data-gid="${gId}" value="${escapeHTML(appData.chartGroups[gId].name)}" placeholder="グループ名">
+               <button type="button" class="move-cg-up-btn text-gray-400 hover:text-emerald-500 p-2 disabled:opacity-30" data-id="${gId}" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-up" class="w-5 h-5 pointer-events-none"></i></button>
+               <button type="button" class="move-cg-down-btn text-gray-400 hover:text-emerald-500 p-2 disabled:opacity-30" data-id="${gId}" ${index === arr.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-down" class="w-5 h-5 pointer-events-none"></i></button>
             </div>
           `).join('')}
         </div>
@@ -647,7 +665,7 @@
              <div class="flex justify-between items-center text-sm p-2 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
                 <span class="truncate pr-2 font-medium text-gray-700">${escapeHTML(c.name)}</span>
                 <select class="p-1.5 border border-gray-200 rounded-lg bg-white text-xs shrink-0 change-cat-group font-bold text-gray-600 outline-none focus:ring-2 focus:ring-emerald-500" data-catid="${c.id}">
-                   ${['g1', 'g2', 'g3', 'g4'].map(gId => `
+                   ${appData.chartGroupOrder.map(gId => `
                       <option value="${gId}" ${c.groupId === gId ? 'selected' : ''}>${escapeHTML(appData.chartGroups[gId].name || '未設定')}</option>
                    `).join('')}
                 </select>
@@ -656,49 +674,44 @@
         </div>
       `;
 
-      return `
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <div class="flex justify-between items-center mb-4 border-b pb-2"><h3 class="font-bold text-gray-800">アカウント設定</h3><span class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-full">${currentUser?.email}</span></div>
-          <button id="migrate-gas-btn" class="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 py-3 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors mb-3 flex items-center justify-center shadow-sm">
-            <i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ
-          </button>
-          <button id="logout-btn" class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center justify-center">
-            <i data-lucide="log-out" class="w-4 h-4 mr-2"></i>ログアウト
-          </button>
-        </section>
+      const sectionsData = {
+        account: {
+          title: 'アカウント設定',
+          html: `
+            <div class="mb-3 flex justify-between items-center"><span class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-full">${currentUser?.email}</span></div>
+            <button id="migrate-gas-btn" class="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 py-3 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors mb-3 flex items-center justify-center shadow-sm">
+              <i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ
+            </button>
+            <button id="logout-btn" class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center justify-center">
+              <i data-lucide="log-out" class="w-4 h-4 mr-2"></i>ログアウト
+            </button>
+          `
+        },
+        budget: { title: '予算設定', html: `<input type="number" id="budget-month-input" value="${escapeHTML(appData.budget.monthly)}" class="w-full p-2 border rounded-lg text-sm mb-2" /><button id="save-budget-btn" class="w-full bg-gray-800 text-white py-2 rounded-lg font-medium text-sm">保存する</button>` },
+        chartGroup: { title: 'グラフ表示グループ設定', html: groupConfigHTML },
+        category: { title: 'カテゴリ設定', html: `<div class="mb-5"><h4 class="text-sm font-bold text-gray-700 mb-2">支出カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${varCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="variable"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-emerald-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div><div><h4 class="text-sm font-bold text-gray-700 mb-2">収入カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${incCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="income"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-blue-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div>` },
+        fixed: { title: '固定費設定', html: `<div class="space-y-3">${fixedHTML}</div>${fixedFormHTML}` },
+        special: {
+          title: '特別収支設定',
+          html: `<div class="mb-4 border border-gray-100 rounded-lg max-h-48 overflow-y-auto">${specialHTML}</div><form id="add-special-form" class="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100"><div class="grid grid-cols-3 gap-2"><select id="st-year" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="${currY}">${currY}年</option><option value="${currY + 1}">${currY + 1}年</option></select><select id="st-month" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white">${Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}月</option>`).join('')}</select><select id="st-type" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="expense">支出</option><option value="income">収入</option></select></div><div class="grid grid-cols-2 gap-2"><input type="text" id="st-name" placeholder="項目名" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /><input type="number" id="st-amount" placeholder="金額" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /></div><input type="text" id="st-memo" placeholder="メモ (任意)" class="w-full p-2 border border-blue-200 rounded-lg text-sm" /><button type="submit" class="w-full bg-blue-600 text-white text-sm py-2 rounded-lg font-medium">追加</button></form>`
+        }
+      };
 
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <h3 class="font-bold text-gray-800 mb-3 border-b pb-2">予算設定</h3>
-          <input type="number" id="budget-month-input" value="${escapeHTML(appData.budget.monthly)}" class="w-full p-2 border rounded-lg text-sm mb-2" />
-          <button id="save-budget-btn" class="w-full bg-gray-800 text-white py-2 rounded-lg font-medium text-sm">保存する</button>
-        </section>
-
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">グラフ表示グループ設定</h3>
-          ${groupConfigHTML}
-        </section>
-
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">カテゴリ設定</h3>
-          <div class="mb-5"><h4 class="text-sm font-bold text-gray-700 mb-2">支出カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${varCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="variable"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-emerald-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div>
-          <div><h4 class="text-sm font-bold text-gray-700 mb-2">収入カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${incCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="income"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-blue-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div>
-        </section>
-
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">固定費設定</h3>
-          <div class="space-y-3">${fixedHTML}</div>${fixedFormHTML}
-        </section>
-
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">特別収支設定</h3>
-          <div class="mb-4 border border-gray-100 rounded-lg max-h-48 overflow-y-auto">${specialHTML}</div>
-          <form id="add-special-form" class="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div class="grid grid-cols-3 gap-2"><select id="st-year" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="${currY}">${currY}年</option><option value="${currY + 1}">${currY + 1}年</option></select><select id="st-month" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white">${Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}月</option>`).join('')}</select><select id="st-type" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="expense">支出</option><option value="income">収入</option></select></div>
-            <div class="grid grid-cols-2 gap-2"><input type="text" id="st-name" placeholder="項目名" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /><input type="number" id="st-amount" placeholder="金額" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /></div>
-            <input type="text" id="st-memo" placeholder="メモ (任意)" class="w-full p-2 border border-blue-200 rounded-lg text-sm" /><button type="submit" class="w-full bg-blue-600 text-white text-sm py-2 rounded-lg font-medium">追加</button>
-          </form>
-        </section>
-      `;
+      return appData.settingsOrder.map((secId, index, arr) => {
+        const sec = sectionsData[secId];
+        return `
+          <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+              <h3 class="font-bold text-gray-800">${sec.title}</h3>
+              <div class="flex space-x-1 shrink-0">
+                <button type="button" class="move-sec-up p-1 text-gray-400 hover:text-emerald-500 disabled:opacity-30" data-id="${secId}" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-up" class="w-5 h-5 pointer-events-none"></i></button>
+                <button type="button" class="move-sec-down p-1 text-gray-400 hover:text-emerald-500 disabled:opacity-30" data-id="${secId}" ${index === arr.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-down" class="w-5 h-5 pointer-events-none"></i></button>
+              </div>
+            </div>
+            ${sec.html}
+          </section>
+        `;
+      }).join('');
     };
 
     const renderModals = () => {
@@ -829,7 +842,7 @@
         migrateBtn.innerHTML = '<i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ';
         lucide.createIcons(); return;
       }
-      
+
       const blockBtn = e.target.closest('.chart-block-btn');
       if (blockBtn) {
           const year = parseInt(blockBtn.dataset.year, 10); const month = parseInt(blockBtn.dataset.month, 10); const grpId = blockBtn.dataset.group;
@@ -882,6 +895,32 @@
           const container = document.getElementById('chart-breakdown-container');
           if (container) container.classList.add('hidden');
           return;
+      }
+
+      if (e.target.closest('.move-sec-up')) {
+        const btn = e.target.closest('.move-sec-up'); if (btn.disabled) return;
+        const id = btn.dataset.id; const idx = appData.settingsOrder.indexOf(id);
+        if (idx > 0) { [appData.settingsOrder[idx - 1], appData.settingsOrder[idx]] = [appData.settingsOrder[idx], appData.settingsOrder[idx - 1]]; saveData(); updateView(); }
+        return;
+      }
+      if (e.target.closest('.move-sec-down')) {
+        const btn = e.target.closest('.move-sec-down'); if (btn.disabled) return;
+        const id = btn.dataset.id; const idx = appData.settingsOrder.indexOf(id);
+        if (idx < appData.settingsOrder.length - 1) { [appData.settingsOrder[idx + 1], appData.settingsOrder[idx]] = [appData.settingsOrder[idx], appData.settingsOrder[idx + 1]]; saveData(); updateView(); }
+        return;
+      }
+
+      if (e.target.closest('.move-cg-up-btn')) {
+        const btn = e.target.closest('.move-cg-up-btn'); if (btn.disabled) return;
+        const id = btn.dataset.id; const idx = appData.chartGroupOrder.indexOf(id);
+        if (idx > 0) { [appData.chartGroupOrder[idx - 1], appData.chartGroupOrder[idx]] = [appData.chartGroupOrder[idx], appData.chartGroupOrder[idx - 1]]; saveData(); updateView(); }
+        return;
+      }
+      if (e.target.closest('.move-cg-down-btn')) {
+        const btn = e.target.closest('.move-cg-down-btn'); if (btn.disabled) return;
+        const id = btn.dataset.id; const idx = appData.chartGroupOrder.indexOf(id);
+        if (idx < appData.chartGroupOrder.length - 1) { [appData.chartGroupOrder[idx + 1], appData.chartGroupOrder[idx]] = [appData.chartGroupOrder[idx], appData.chartGroupOrder[idx + 1]]; saveData(); updateView(); }
+        return;
       }
 
       if (e.target.closest('#confirm-cancel-btn')) { confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
@@ -1026,6 +1065,7 @@
         if (itemEl) itemEl.classList.add('opacity-0', 'scale-95');
         setTimeout(() => { todoList = todoList.filter(t => String(t.id) !== String(id)); saveTodo(); updateView(); }, 300);
       }
+      
       if (e.target.classList.contains('update-group-name')) {
         const gId = e.target.dataset.gid; appData.chartGroups[gId].name = e.target.value; saveData(); updateView();
       }
