@@ -105,6 +105,18 @@
     };
     const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
+    // ★ 前月比の計算とHTML生成を行うヘルパー関数
+    const getDiffHTML = (curr, prev) => {
+        if (!curr && !prev) return '';
+        const diff = curr - prev;
+        if (diff === 0) return `<div class="text-[10px] text-gray-400 mt-0.5">前月比 ±0</div>`;
+        const signStr = diff > 0 ? '+' : '-';
+        const color = diff > 0 ? 'text-red-500' : 'text-blue-500';
+        const pct = prev > 0 ? Math.round((diff / prev) * 100) : (curr > 0 ? 100 : 0);
+        const pctStr = prev > 0 ? `${diff > 0 ? '+' : ''}${pct}%` : 'New';
+        return `<div class="text-[10px] ${color} mt-0.5 font-medium tracking-tight whitespace-nowrap">${pctStr} (${signStr}${formatCurrency(Math.abs(diff))})</div>`;
+    };
+
     const initialData = {
       budget: { monthly: 200000, yearly: 2400000, yearlyIncome: 3500000 },
       categories: [
@@ -135,8 +147,6 @@
     let alertModalState = { isOpen: false, message: '' };
     let editExpenseModalState = { isOpen: false, expId: null };
     let editSpecialModalState = { isOpen: false, stId: null };
-    
-    // ★ CSVインポート用の状態管理
     let importCsvModalState = { isOpen: false, items: [] };
     
     let isSyncing = false;
@@ -368,6 +378,24 @@
     };
 
     const renderHistoryHTML = (currentCycle) => {
+      // ★ 前月のサイクルを特定してデータを準備
+      let prevYear = currentCycle.year;
+      let prevMonth = currentCycle.month - 1;
+      if (prevMonth < 1) { prevMonth = 12; prevYear -= 1; }
+
+      const prevCategoryTotals = {};
+      let prevTotalVariable = 0;
+
+      appData.expenses.forEach(e => {
+        const c = getCycle(new Date(e.date));
+        if (c.year === prevYear && c.month === prevMonth && e.type !== 'income') {
+            const keyId = String(e.categoryId) === 'fixed_auto' ? e.fixedCostId : e.categoryId;
+            if (!prevCategoryTotals[keyId]) prevCategoryTotals[keyId] = 0;
+            prevCategoryTotals[keyId] += e.amount;
+            if (e.type === 'expense' || e.type === 'variable') prevTotalVariable += e.amount;
+        }
+      });
+
       const cycleExpenses = appData.expenses.filter(e => {
         const d = new Date(e.date); d.setHours(0,0,0,0);
         const start = new Date(currentCycle.startDate); start.setHours(0,0,0,0);
@@ -405,11 +433,18 @@
             <div class="space-y-3">
               ${sortedVariable.length > 0 ? `
               <article class="bg-emerald-50/70 rounded-xl p-3 border border-emerald-100/50 shadow-sm">
-                <header class="flex justify-between items-center text-sm font-bold text-emerald-800 border-b border-emerald-200/50 pb-2 mb-2">
-                  <span>変動費</span><span>${formatCurrency(totalVariable)}</span>
+                <header class="flex justify-between items-start text-sm font-bold text-emerald-800 border-b border-emerald-200/50 pb-2 mb-2">
+                  <span class="mt-0.5">変動費</span>
+                  <div class="flex flex-col items-end">
+                    <span>${formatCurrency(totalVariable)}</span>
+                    ${getDiffHTML(totalVariable, prevTotalVariable)}
+                  </div>
                 </header>
-                <div class="space-y-1.5 pl-1">
-                  ${sortedVariable.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-emerald-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span></div>`).join('')}
+                <div class="space-y-0">
+                  ${sortedVariable.map(cat => {
+                     const prev = prevCategoryTotals[cat.id] || 0;
+                     return `<div class="flex justify-between items-start text-xs py-1.5 border-b border-emerald-100/50 last:border-0"><span class="text-emerald-700 mt-0.5">${escapeHTML(getCategoryName(cat.id))}</span><div class="flex flex-col items-end"><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span>${getDiffHTML(cat.amount, prev)}</div></div>`;
+                  }).join('')}
                 </div>
               </article>` : ''}
               ${sortedFixed.length > 0 ? `
@@ -931,7 +966,6 @@
       const logoutBtn = e.target.closest('#logout-btn');
       if (logoutBtn) { if(confirm('ログアウトしますか？')) signOut(auth); return; }
 
-      // ★ CSVインポートボタンのイベント
       if (e.target.closest('#trigger-csv-import-btn')) {
           document.getElementById('csv-file-input').click();
           return;
@@ -986,6 +1020,11 @@
       const blockBtn = e.target.closest('.chart-block-btn');
       if (blockBtn) {
           const year = parseInt(blockBtn.dataset.year, 10); const month = parseInt(blockBtn.dataset.month, 10); const grpId = blockBtn.dataset.group;
+          
+          // ★ 前月のサイクルを特定
+          let prevYear = year; let prevMonth = month - 1;
+          if (prevMonth < 1) { prevMonth = 12; prevYear -= 1; }
+          
           const container = document.getElementById('chart-breakdown-container');
           if (!container) return;
           
@@ -994,26 +1033,44 @@
           if (grpId === 'fixed') { groupCats = appData.fixedCosts.map(fc => ({ id: fc.id, name: fc.name })); } 
           else { groupCats = appData.categories.filter(c => c.type === 'variable' && (c.groupId === grpId || (!c.groupId && grpId === 'g3'))); }
           
-          const targetExpenses = appData.expenses.filter(e => { const c = getCycle(new Date(e.date)); return c.year === year && c.month === month && e.type !== 'income'; });
           const catTotals = {}; let totalGrpAmt = 0;
+          const prevCatTotals = {}; let prevTotalGrpAmt = 0;
           
-          targetExpenses.forEach(e => {
-              let eGrp = 'g3';
-              if (e.type === 'fixed') eGrp = 'fixed';
-              else { const cat = appData.categories.find(c => String(c.id) === String(e.categoryId)); eGrp = cat ? (cat.groupId || 'g3') : 'g3'; }
-              if (eGrp === grpId) {
-                  const id = e.type === 'fixed' ? (e.fixedCostId || e.categoryId) : e.categoryId;
-                  catTotals[id] = (catTotals[id] || 0) + e.amount;
-                  totalGrpAmt += e.amount;
+          appData.expenses.forEach(e => {
+              const c = getCycle(new Date(e.date));
+              if ((c.year === year && c.month === month) || (c.year === prevYear && c.month === prevMonth)) {
+                  if (e.type !== 'income') {
+                      let eGrp = 'g3';
+                      if (e.type === 'fixed') eGrp = 'fixed';
+                      else { const cat = appData.categories.find(cx => String(cx.id) === String(e.categoryId)); eGrp = cat ? (cat.groupId || 'g3') : 'g3'; }
+                      
+                      if (eGrp === grpId) {
+                          const id = e.type === 'fixed' ? (e.fixedCostId || e.categoryId) : e.categoryId;
+                          if (c.year === year && c.month === month) {
+                              catTotals[id] = (catTotals[id] || 0) + e.amount;
+                              totalGrpAmt += e.amount;
+                          } else {
+                              prevCatTotals[id] = (prevCatTotals[id] || 0) + e.amount;
+                              prevTotalGrpAmt += e.amount;
+                          }
+                      }
+                  }
               }
           });
           
-          const listHTML = groupCats.map(cat => `
-              <div class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                  <span class="text-xs text-gray-600">${escapeHTML(cat.name)}</span>
-                  <span class="text-sm font-bold text-gray-800">${formatCurrency(catTotals[cat.id] || 0)}</span>
-              </div>
-          `).join('');
+          const listHTML = groupCats.map(cat => {
+              const curr = catTotals[cat.id] || 0;
+              const prev = prevCatTotals[cat.id] || 0;
+              if(curr === 0 && prev === 0) return '';
+              return `
+              <div class="flex justify-between items-start py-2 border-b border-gray-100 last:border-0">
+                  <span class="text-xs text-gray-600 mt-0.5">${escapeHTML(cat.name)}</span>
+                  <div class="flex flex-col items-end">
+                      <span class="text-sm font-bold text-gray-800">${formatCurrency(curr)}</span>
+                      ${getDiffHTML(curr, prev)}
+                  </div>
+              </div>`;
+          }).join('');
           
           container.innerHTML = `
               <header class="flex items-center justify-between mb-2">
@@ -1023,7 +1080,14 @@
               <div class="text-[10px] text-gray-500 mb-2 leading-relaxed border-b border-dashed border-gray-200 pb-2">構成カテゴリ：${groupCats.length > 0 ? groupCats.map(c=>escapeHTML(c.name)).join('、') : 'なし'}</div>
               <div class="bg-white rounded-lg p-2 shadow-sm border border-gray-100">
                   ${listHTML || '<div class="text-xs text-gray-400 py-2 text-center">データがありません</div>'}
-                  <div class="flex justify-between items-center pt-2 mt-1 border-t border-gray-200 font-bold text-sm"><span>合計</span><span>${formatCurrency(totalGrpAmt)}</span></div>
+                  ${(totalGrpAmt > 0 || prevTotalGrpAmt > 0) ? `
+                  <div class="flex justify-between items-start pt-2 mt-1 border-t border-gray-200 font-bold text-sm">
+                      <span class="mt-0.5">合計</span>
+                      <div class="flex flex-col items-end">
+                          <span>${formatCurrency(totalGrpAmt)}</span>
+                          ${getDiffHTML(totalGrpAmt, prevTotalGrpAmt)}
+                      </div>
+                  </div>` : ''}
               </div>
           `;
           container.classList.remove('hidden'); lucide.createIcons();
@@ -1148,7 +1212,6 @@
     });
 
     document.body.addEventListener('change', (e) => {
-      // ★ CSVファイルの読み込みと照合処理
       if (e.target.id === 'csv-file-input') {
         const file = e.target.files[0];
         if (!file) return;
@@ -1181,7 +1244,7 @@
                         const isDuplicate = appData.expenses.some(exp => {
                             if (exp.amount !== amount) return false;
                             const diffDays = Math.abs(new Date(date) - new Date(exp.date)) / (1000 * 3600 * 24);
-                            return diffDays <= 3; // 金額が同じで日付が3日以内なら重複とみなす
+                            return diffDays <= 3;
                         });
                         newItems.push({
                             id: generateUUID(),
