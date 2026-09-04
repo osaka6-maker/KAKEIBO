@@ -25,7 +25,6 @@
 </head>
 <body class="bg-gray-900 h-[100dvh] w-full font-sans text-gray-800 flex justify-center overflow-hidden">
   
-  <!-- ログイン画面 -->
   <section id="login-screen" class="absolute inset-0 z-50 bg-gray-50 flex flex-col items-center justify-center hidden" aria-label="ログイン画面">
     <article class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full mx-4">
       <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -40,7 +39,6 @@
     </article>
   </section>
 
-  <!-- アプリ本体 -->
   <div id="app-container" class="w-full max-w-md bg-gray-100 h-full flex flex-col relative shadow-2xl overflow-hidden hidden">
     <header id="header" class="bg-white px-4 py-3 shadow-sm z-10 flex justify-between items-center border-b border-gray-200 shrink-0"></header>
     
@@ -116,7 +114,7 @@
         const color = diff > 0 ? 'text-red-500' : 'text-blue-500';
         const pct = prev > 0 ? Math.round((diff / prev) * 100) : (curr > 0 ? 100 : 0);
         const pctStr = prev > 0 ? `${diff > 0 ? '+' : ''}${pct}%` : 'New';
-        return `<span class="text-xs ${color} ml-1.5 font-medium tracking-tight whitespace-nowrap w-32 text-right inline-block">${pctStr} (${signStr}${formatCurrency(Math.abs(diff))})</span>`;
+        return `<span class="text-xs ${color} ml-1.5 font-medium tracking-tight whitespace-nowrap w-32 text-right inline-block" title="${signStr}${formatCurrency(Math.abs(diff))}">${pctStr} (${signStr}${formatCurrency(Math.abs(diff))})</span>`;
     };
 
     const initialData = {
@@ -203,12 +201,11 @@
       if (!appData.specialTransactions) appData.specialTransactions = [];
       if (!appData.expenses) appData.expenses = [];
       
-      // ★ todoListの初期化とローカルストレージからの移行
       if (!appData.todoList) {
         try {
           const saved = localStorage.getItem('v3_budget_todo_data_html');
           appData.todoList = saved ? JSON.parse(saved) : [];
-          localStorage.removeItem('v3_budget_todo_data_html'); // 移行後に削除
+          localStorage.removeItem('v3_budget_todo_data_html');
         } catch(e) {
           appData.todoList = [];
         }
@@ -400,13 +397,22 @@
       let prevMonth = currentCycle.month - 1;
       if (prevMonth < 1) { prevMonth = 12; prevYear -= 1; }
 
+      const currCatTotals = {};
       const prevCategoryTotals = {};
+      let totalVariable = 0; let totalFixed = 0; let totalIncomeCat = 0;
       let prevTotalVariable = 0;
 
       appData.expenses.forEach(e => {
         const c = getCycle(new Date(e.date));
-        if (c.year === prevYear && c.month === prevMonth && e.type !== 'income') {
-            const keyId = String(e.categoryId) === 'fixed_auto' ? e.fixedCostId : e.categoryId;
+        const keyId = String(e.categoryId) === 'fixed_auto' ? String(e.fixedCostId) : String(e.categoryId);
+
+        if (c.year === currentCycle.year && c.month === currentCycle.month) {
+            if (!currCatTotals[keyId]) currCatTotals[keyId] = 0;
+            currCatTotals[keyId] += e.amount;
+            if (e.type === 'fixed') totalFixed += e.amount;
+            else if (e.type === 'income') totalIncomeCat += e.amount;
+            else totalVariable += e.amount;
+        } else if (c.year === prevYear && c.month === prevMonth && e.type !== 'income') {
             if (!prevCategoryTotals[keyId]) prevCategoryTotals[keyId] = 0;
             prevCategoryTotals[keyId] += e.amount;
             if (e.type === 'expense' || e.type === 'variable') prevTotalVariable += e.amount;
@@ -423,24 +429,18 @@
       const totalExpense = cycleExpenses.filter(e => e.type !== 'income').reduce((sum, exp) => sum + exp.amount, 0);
       const totalIncome = cycleExpenses.filter(e => e.type === 'income').reduce((sum, exp) => sum + exp.amount, 0);
 
-      const categoryTotals = cycleExpenses.reduce((acc, exp) => {
-        const keyId = String(exp.categoryId) === 'fixed_auto' ? exp.fixedCostId : exp.categoryId;
-        if(!acc[keyId]) acc[keyId] = { amount: 0, type: exp.type };
-        acc[keyId].amount += exp.amount;
-        return acc;
-      }, {});
+      // ★ すべてのカテゴリを一覧に表示するよう修正（抜け漏れ防止）
+      const sortedVariable = appData.categories.filter(c => c.type === 'variable').map(cat => ({
+         id: cat.id, name: cat.name, amount: currCatTotals[cat.id] || 0, prev: prevCategoryTotals[cat.id] || 0
+      })).sort((a, b) => b.amount - a.amount || b.prev - a.prev);
 
-      const sortedVariable = []; const sortedFixed = []; const sortedIncome = [];
-      let totalVariable = 0; let totalFixed = 0; let totalIncomeCat = 0;
+      const sortedFixed = appData.fixedCosts.map(fc => ({
+         id: fc.id, name: fc.name, amount: currCatTotals[fc.id] || 0, prev: prevCategoryTotals[fc.id] || 0
+      })).filter(f => f.amount > 0 || f.prev > 0).sort((a, b) => b.amount - a.amount);
 
-      Object.entries(categoryTotals).forEach(([id, data]) => {
-         if (data.type === 'fixed') { sortedFixed.push({ id, ...data }); totalFixed += data.amount; } 
-         else if (data.type === 'expense' || data.type === 'variable') { sortedVariable.push({ id, ...data }); totalVariable += data.amount; } 
-         else if (data.type === 'income') { sortedIncome.push({ id, ...data }); totalIncomeCat += data.amount; }
-      });
-      sortedVariable.sort((a, b) => b.amount - a.amount);
-      sortedFixed.sort((a, b) => b.amount - a.amount);
-      sortedIncome.sort((a, b) => b.amount - a.amount);
+      const sortedIncome = appData.categories.filter(c => c.type === 'income').map(cat => ({
+         id: cat.id, name: cat.name, amount: currCatTotals[cat.id] || 0, prev: prevCategoryTotals[cat.id] || 0
+      })).filter(i => i.amount > 0 || i.prev > 0).sort((a, b) => b.amount - a.amount);
 
       let subtotalsHTML = '';
       if (sortedVariable.length > 0 || sortedFixed.length > 0 || sortedIncome.length > 0) {
@@ -458,10 +458,15 @@
                   </div>
                 </header>
                 <div class="space-y-0">
-                  ${sortedVariable.map(cat => {
-                     const prev = prevCategoryTotals[cat.id] || 0;
-                     return `<div class="flex justify-between items-center text-sm py-1.5 border-b border-emerald-100/50 last:border-0"><span class="text-emerald-700">${escapeHTML(getCategoryName(cat.id))}</span><div class="flex items-center"><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span>${getDiffHTML(cat.amount, prev)}</div></div>`;
-                  }).join('')}
+                  ${sortedVariable.map(cat => `
+                     <div class="flex justify-between items-center text-sm py-1.5 border-b border-emerald-100/50 last:border-0">
+                        <span class="text-emerald-700">${escapeHTML(cat.name)}</span>
+                        <div class="flex items-center shrink-0">
+                           <span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span>
+                           ${getDiffHTML(cat.amount, cat.prev)}
+                        </div>
+                     </div>
+                  `).join('')}
                 </div>
               </article>` : ''}
               ${sortedFixed.length > 0 ? `
@@ -471,11 +476,12 @@
                   <span>${formatCurrency(totalFixed)}</span>
                 </summary>
                 <div class="px-3 pb-3 space-y-1.5 border-t border-indigo-200/50 pt-2">
-                  ${sortedFixed.map(cat => {
-                     const sampleExp = cycleExpenses.find(e => String(e.fixedCostId) === String(cat.id) || String(e.categoryId) === String(cat.id));
-                     const name = sampleExp?.type === 'fixed' ? (sampleExp.name || getCategoryName(sampleExp.categoryId)) : getCategoryName(cat.id);
-                     return `<div class="flex justify-between items-center text-sm"><span class="text-indigo-700">${escapeHTML(name)}</span><span class="font-bold text-indigo-900">${formatCurrency(cat.amount)}</span></div>`;
-                  }).join('')}
+                  ${sortedFixed.map(cat => `
+                     <div class="flex justify-between items-center text-sm">
+                        <span class="text-indigo-700">${escapeHTML(cat.name)}</span>
+                        <span class="font-bold text-indigo-900">${formatCurrency(cat.amount)}</span>
+                     </div>
+                  `).join('')}
                 </div>
               </details>` : ''}
               ${sortedIncome.length > 0 ? `
@@ -484,7 +490,7 @@
                   <span>収入</span><span>+${formatCurrency(totalIncomeCat)}</span>
                 </header>
                 <div class="space-y-1.5 pl-1">
-                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-sm"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
+                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-sm"><span class="text-blue-700">${escapeHTML(cat.name)}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
                 </div>
               </article>` : ''}
             </div>
@@ -1260,7 +1266,7 @@
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.readAsText(file, 'Shift_JIS'); // VpassはShift_JIS
+        reader.readAsText(file, 'Shift_JIS'); 
         reader.onload = function(evt) {
             const lines = evt.target.result.split('\n');
             const newItems = [];
