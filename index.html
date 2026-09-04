@@ -136,6 +136,9 @@
     let editExpenseModalState = { isOpen: false, expId: null };
     let editSpecialModalState = { isOpen: false, stId: null };
     
+    // ★ CSVインポート用の状態管理
+    let importCsvModalState = { isOpen: false, items: [] };
+    
     let isSyncing = false;
 
     const saveData = async () => {
@@ -707,6 +710,10 @@
           title: 'アカウント設定',
           html: `
             <div class="mb-3 flex justify-between items-center"><span class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-full">${currentUser?.email}</span></div>
+            <button id="trigger-csv-import-btn" class="w-full bg-emerald-50 text-emerald-600 border border-emerald-200 py-3 rounded-lg text-sm font-bold hover:bg-emerald-100 transition-colors mb-3 flex items-center justify-center shadow-sm">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-2"></i>三井住友カード(Vpass) CSVを取り込む
+            </button>
+            <input type="file" id="csv-file-input" accept=".csv" class="hidden">
             <button id="migrate-gas-btn" class="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 py-3 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors mb-3 flex items-center justify-center shadow-sm"><i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ</button>
             <button id="logout-btn" class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center justify-center"><i data-lucide="log-out" class="w-4 h-4 mr-2"></i>ログアウト</button>
           `
@@ -746,6 +753,56 @@
     const renderModals = () => {
       const container = document.getElementById('modals');
       let modalHTML = '';
+
+      if (importCsvModalState.isOpen) {
+          const itemsHTML = importCsvModalState.items.map(item => {
+              const bgClass = item.isDuplicate ? 'bg-gray-100 opacity-60' : 'bg-white';
+              const dupBadge = item.isDuplicate ? `<span class="text-[10px] bg-gray-200 text-gray-500 px-1 rounded ml-2">登録済かも</span>` : `<span class="text-[10px] bg-blue-100 text-blue-600 px-1 rounded ml-2">新規</span>`;
+              const itemCatOptions = `<option value="unassigned">未選択</option>` + appData.categories.filter(c => c.type === 'variable').map(c => `<option value="${c.id}" ${String(c.id) === String(item.categoryId) ? 'selected' : ''}>${escapeHTML(c.name)}</option>`).join('');
+
+              return `
+              <article class="p-3 border-b border-gray-100 flex items-center ${bgClass}">
+                  <input type="checkbox" class="csv-item-check w-5 h-5 text-emerald-500 rounded border-gray-300 mr-3 shrink-0" data-id="${item.id}" ${item.selected ? 'checked' : ''}>
+                  <div class="flex-1 min-w-0 pr-2">
+                      <div class="flex items-center mb-0.5"><div class="text-[10px] text-gray-500 font-medium">${item.date}</div>${dupBadge}</div>
+                      <h4 class="text-sm font-bold text-gray-800 truncate">${escapeHTML(item.name)}</h4>
+                      ${item.memo ? `<div class="text-[10px] text-gray-400 truncate">${escapeHTML(item.memo)}</div>` : ''}
+                  </div>
+                  <div class="flex flex-col items-end shrink-0 space-y-1">
+                      <span class="font-bold text-sm text-gray-800 mb-1">${formatCurrency(item.amount)}</span>
+                      <select class="text-xs border border-gray-200 rounded p-1 w-24 bg-gray-50 csv-item-cat-select outline-none focus:ring-1 focus:ring-emerald-500" data-id="${item.id}">
+                          ${itemCatOptions}
+                      </select>
+                  </div>
+              </article>
+              `;
+          }).join('');
+
+          modalHTML += `
+            <div role="dialog" aria-modal="true" class="fixed inset-0 bg-gray-50 z-50 flex flex-col">
+              <header class="bg-white px-4 py-3 border-b border-gray-200 flex justify-between items-center shadow-sm shrink-0">
+                  <h3 class="font-bold text-gray-800">CSV取り込み確認</h3>
+                  <button id="close-csv-modal" class="text-gray-400 hover:text-gray-600 p-1"><i data-lucide="x" class="w-6 h-6 pointer-events-none"></i></button>
+              </header>
+              <div class="bg-blue-50 text-blue-700 text-xs p-3 flex shrink-0 border-b border-blue-100 leading-relaxed">
+                  <i data-lucide="info" class="w-4 h-4 mr-1 shrink-0 mt-0.5"></i>
+                  <div>金額が一致し、日付が近い項目は「登録済かも」として除外しています。<br>登録したい項目にチェックを入れてカテゴリを選んでください。</div>
+              </div>
+              <div class="flex-1 overflow-y-auto custom-scrollbar bg-white">
+                  ${itemsHTML || '<div class="p-6 text-center text-gray-400 text-sm">読み込めるデータがありませんでした</div>'}
+              </div>
+              <footer class="bg-white p-4 border-t border-gray-200 shrink-0 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                  <div class="flex justify-between items-center mb-3">
+                      <label class="flex items-center text-sm cursor-pointer text-gray-700 font-medium"><input type="checkbox" id="csv-check-all" class="w-4 h-4 mr-2 text-emerald-500 rounded border-gray-300">すべて選択</label>
+                      <span class="text-sm font-bold text-gray-700">選択中: <span id="csv-selected-count" class="text-emerald-600 text-lg mx-1">${importCsvModalState.items.filter(i=>i.selected).length}</span>件</span>
+                  </div>
+                  <button id="exec-csv-import-btn" class="w-full bg-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-emerald-600 transition-colors flex items-center justify-center">
+                     <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i>選択した項目を登録する
+                  </button>
+              </footer>
+            </div>
+          `;
+      }
 
       if (deleteCatModalState.isOpen) {
         const targetCat = appData.categories.find(c => String(c.id) === String(deleteCatModalState.catId));
@@ -873,6 +930,43 @@
       }
       const logoutBtn = e.target.closest('#logout-btn');
       if (logoutBtn) { if(confirm('ログアウトしますか？')) signOut(auth); return; }
+
+      // ★ CSVインポートボタンのイベント
+      if (e.target.closest('#trigger-csv-import-btn')) {
+          document.getElementById('csv-file-input').click();
+          return;
+      }
+      if (e.target.closest('#close-csv-modal')) {
+          importCsvModalState.isOpen = false;
+          importCsvModalState.items = [];
+          renderModals();
+          return;
+      }
+      if (e.target.closest('#exec-csv-import-btn')) {
+          const selectedItems = importCsvModalState.items.filter(i => i.selected);
+          if (selectedItems.length === 0) {
+              alertAction("登録する項目が選択されていません。");
+              return;
+          }
+          selectedItems.forEach(item => {
+              const c = getCycle(new Date(item.date));
+              appData.expenses.push({
+                  id: generateUUID(),
+                  date: item.date,
+                  categoryId: item.categoryId === 'unassigned' ? 'unassigned' : Number(item.categoryId),
+                  amount: item.amount,
+                  type: 'variable',
+                  memo: item.name + (item.memo ? ` (${item.memo})` : ''),
+                  cycleKey: `${c.year}-${c.month}`
+              });
+          });
+          saveData();
+          importCsvModalState.isOpen = false;
+          importCsvModalState.items = [];
+          alertAction(`${selectedItems.length}件のデータを登録しました！`);
+          updateView();
+          return;
+      }
 
       const migrateBtn = e.target.closest('#migrate-gas-btn');
       if (migrateBtn) {
@@ -1054,8 +1148,84 @@
     });
 
     document.body.addEventListener('change', (e) => {
+      // ★ CSVファイルの読み込みと照合処理
+      if (e.target.id === 'csv-file-input') {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.readAsText(file, 'Shift_JIS'); // VpassはShift_JIS
+        reader.onload = function(evt) {
+            const lines = evt.target.result.split('\n');
+            const newItems = [];
+            
+            const guessCategory = (name) => {
+                const n = name; 
+                const findCat = (kw) => appData.categories.find(c => c.name.includes(kw));
+                if(n.includes('ガス') || n.includes('でんき') || n.includes('電気') || n.includes('水道') || n.includes('東邦') || n.includes('関西電力')) return findCat('光熱')?.id || findCat('固定')?.id || 'unassigned';
+                if(n.includes('ＥＴＣ') || n.includes('ETC') || n.includes('ＰＡＳＭＯ') || n.includes('Ｓｕｉｃａ')) return findCat('交通')?.id || findCat('車')?.id || 'unassigned';
+                if(n.includes('セブン') || n.includes('ローソン') || n.includes('ファミマ')) return findCat('コンビニ')?.id || 'unassigned';
+                if(n.includes('オークワ') || n.includes('イオン') || n.includes('スーパー') || n.includes('ウエルシア') || n.includes('薬局')) return findCat('スーパー')?.id || findCat('日用品')?.id || findCat('食費')?.id || 'unassigned';
+                if(n.includes('マクドナルド') || n.includes('すき家') || n.includes('カフェ')) return findCat('外食')?.id || 'unassigned';
+                if(n.includes('給油') || n.includes('エネオス') || n.includes('ＥＮＥＯＳ')) return findCat('車')?.id || 'unassigned';
+                return 'unassigned';
+            };
+
+            lines.forEach(line => {
+                const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
+                if(cols.length >= 6 && cols[0].match(/^\d{4}\/\d{2}\/\d{2}$/)) {
+                    const date = cols[0].replace(/\//g, '-');
+                    const name = cols[1];
+                    const amount = parseInt(cols[2], 10);
+                    const memo = cols[6] || '';
+                    if (!isNaN(amount) && amount > 0) {
+                        const isDuplicate = appData.expenses.some(exp => {
+                            if (exp.amount !== amount) return false;
+                            const diffDays = Math.abs(new Date(date) - new Date(exp.date)) / (1000 * 3600 * 24);
+                            return diffDays <= 3; // 金額が同じで日付が3日以内なら重複とみなす
+                        });
+                        newItems.push({
+                            id: generateUUID(),
+                            date, name, amount, memo,
+                            isDuplicate,
+                            selected: !isDuplicate,
+                            categoryId: guessCategory(name)
+                        });
+                    }
+                }
+            });
+            importCsvModalState.isOpen = true;
+            importCsvModalState.items = newItems;
+            e.target.value = ''; 
+            renderModals();
+            lucide.createIcons();
+        };
+      }
+
       if (e.target.id === 'cycle-select') { const [y, m] = e.target.value.split('-').map(Number); viewCycleDate = getCycleFromYearMonth(y, m); updateView(); }
       if (e.target.id === 'toggle-fixed-chart') { includeFixedCostsInChart = e.target.checked; updateView(); }
+      
+      if (e.target.classList.contains('csv-item-check')) {
+          const id = e.target.dataset.id;
+          const item = importCsvModalState.items.find(i => i.id === id);
+          if(item) item.selected = e.target.checked;
+          const countEl = document.getElementById('csv-selected-count');
+          if(countEl) countEl.innerText = importCsvModalState.items.filter(i => i.selected).length;
+          return;
+      }
+      if (e.target.id === 'csv-check-all') {
+          const checked = e.target.checked;
+          importCsvModalState.items.forEach(i => i.selected = checked);
+          renderModals(); 
+          lucide.createIcons();
+          return;
+      }
+      if (e.target.classList.contains('csv-item-cat-select')) {
+          const id = e.target.dataset.id;
+          const item = importCsvModalState.items.find(i => i.id === id);
+          if (item) item.categoryId = e.target.value;
+          return;
+      }
+
       if (e.target.classList.contains('todo-check')) {
         const id = e.target.dataset.id; const itemEl = document.getElementById(`todo-item-${id}`);
         if (itemEl) itemEl.classList.add('opacity-0', 'scale-95');
