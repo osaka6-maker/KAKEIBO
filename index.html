@@ -103,10 +103,8 @@
     };
     const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
-    // ★ 前月比の表示設定を追加
     let showMoMDiff = true;
 
-    // ★ 前月比のHTML生成関数を修正（文字サイズを text-xs に、％と金額を両方表示）
     const getDiffHTML = (curr, prev) => {
         if (!showMoMDiff) return '';
         if (!curr && !prev) return '';
@@ -452,7 +450,7 @@
                 <div class="space-y-0">
                   ${sortedVariable.map(cat => {
                      const prev = prevCategoryTotals[cat.id] || 0;
-                     return `<div class="flex justify-between items-center text-sm py-1.5 border-b border-emerald-100/50 last:border-0"><span class="text-emerald-700">${escapeHTML(getCategoryName(cat.id))}</span><div class="flex items-center"><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span>${getDiffHTML(cat.amount, prev)}</div></div>`;
+                     return `<div class="flex justify-between items-center text-xs py-1.5 border-b border-emerald-100/50 last:border-0"><span class="text-emerald-700">${escapeHTML(getCategoryName(cat.id))}</span><div class="flex items-center"><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span>${getDiffHTML(cat.amount, prev)}</div></div>`;
                   }).join('')}
                 </div>
               </article>` : ''}
@@ -466,7 +464,7 @@
                   ${sortedFixed.map(cat => {
                      const sampleExp = cycleExpenses.find(e => String(e.fixedCostId) === String(cat.id) || String(e.categoryId) === String(cat.id));
                      const name = sampleExp?.type === 'fixed' ? (sampleExp.name || getCategoryName(sampleExp.categoryId)) : getCategoryName(cat.id);
-                     return `<div class="flex justify-between items-center text-sm"><span class="text-indigo-700">${escapeHTML(name)}</span><span class="font-bold text-indigo-900">${formatCurrency(cat.amount)}</span></div>`;
+                     return `<div class="flex justify-between items-center text-xs"><span class="text-indigo-700">${escapeHTML(name)}</span><span class="font-bold text-indigo-900">${formatCurrency(cat.amount)}</span></div>`;
                   }).join('')}
                 </div>
               </details>` : ''}
@@ -476,7 +474,7 @@
                   <span>収入</span><span>+${formatCurrency(totalIncomeCat)}</span>
                 </header>
                 <div class="space-y-1.5 pl-1">
-                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-sm"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
+                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
                 </div>
               </article>` : ''}
             </div>
@@ -527,10 +525,11 @@
 
     const renderTodoHTML = () => {
       let listHTML = todoList.map(todo => `
-        <li class="todo-item flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100 mb-2" id="todo-item-${todo.id}">
-          <label class="flex items-center flex-1 cursor-pointer">
-            <input type="checkbox" class="todo-check w-5 h-5 text-emerald-500 rounded border-gray-300 focus:ring-emerald-500 mr-3" data-id="${todo.id}">
-            <span class="text-sm text-gray-800 font-medium">${escapeHTML(todo.text)}</span>
+        <li class="todo-item flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100 mb-2" data-id="${todo.id}">
+          <div class="todo-drag-handle p-2 text-gray-400 cursor-grab touch-none -ml-2 mr-1 shrink-0"><i data-lucide="grip-vertical" class="w-5 h-5 pointer-events-none"></i></div>
+          <label class="flex items-center flex-1 cursor-pointer min-w-0">
+            <input type="checkbox" class="todo-check w-5 h-5 text-emerald-500 rounded border-gray-300 focus:ring-emerald-500 mr-3 shrink-0" data-id="${todo.id}">
+            <span class="text-sm text-gray-800 font-medium truncate">${escapeHTML(todo.text)}</span>
           </label>
         </li>
       `).join('');
@@ -542,7 +541,7 @@
           <input type="text" id="new-todo-text" placeholder="項目を追加" class="flex-1 p-3 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm" required />
           <button type="submit" class="bg-emerald-500 text-white px-4 py-3 rounded-xl text-sm font-bold hover:bg-emerald-600 shadow-sm transition-colors">追加</button>
         </form>
-        <ul class="todo-container" aria-label="タスク一覧">${listHTML}</ul>
+        <ul id="todo-list-container" class="todo-container" aria-label="タスク一覧">${listHTML}</ul>
       `;
     };
 
@@ -917,7 +916,23 @@
       
       if (activeTab === 'home') activeContainer.innerHTML = renderHomeHTML(currentCycle);
       if (activeTab === 'history') activeContainer.innerHTML = renderHistoryHTML(currentCycle);
-      if (activeTab === 'todo') activeContainer.innerHTML = renderTodoHTML();
+      if (activeTab === 'todo') {
+        activeContainer.innerHTML = renderTodoHTML();
+        const todoContainer = document.getElementById('todo-list-container');
+        if (todoContainer && todoList.length > 0) {
+          new Sortable(todoContainer, {
+            handle: '.todo-drag-handle',
+            animation: 200,
+            delay: 200,
+            delayOnTouchOnly: true,
+            onEnd: function () {
+              const newOrderIds = Array.from(todoContainer.children).map(el => el.dataset.id);
+              todoList = newOrderIds.map(id => todoList.find(t => String(t.id) === String(id))).filter(Boolean);
+              saveTodo();
+            }
+          });
+        }
+      }
       if (activeTab === 'yearly') activeContainer.innerHTML = renderYearlyHTML(currentCycle);
       if (activeTab === 'settings') {
         activeContainer.innerHTML = renderSettingsHTML();
@@ -1116,32 +1131,6 @@
           return;
       }
 
-      if (e.target.closest('.move-sec-up')) {
-        const btn = e.target.closest('.move-sec-up'); if (btn.disabled) return;
-        const id = btn.dataset.id; const idx = appData.settingsOrder.indexOf(id);
-        if (idx > 0) { [appData.settingsOrder[idx - 1], appData.settingsOrder[idx]] = [appData.settingsOrder[idx], appData.settingsOrder[idx - 1]]; saveData(); updateView(); }
-        return;
-      }
-      if (e.target.closest('.move-sec-down')) {
-        const btn = e.target.closest('.move-sec-down'); if (btn.disabled) return;
-        const id = btn.dataset.id; const idx = appData.settingsOrder.indexOf(id);
-        if (idx < appData.settingsOrder.length - 1) { [appData.settingsOrder[idx + 1], appData.settingsOrder[idx]] = [appData.settingsOrder[idx], appData.settingsOrder[idx + 1]]; saveData(); updateView(); }
-        return;
-      }
-
-      if (e.target.closest('.move-cg-up-btn')) {
-        const btn = e.target.closest('.move-cg-up-btn'); if (btn.disabled) return;
-        const id = btn.dataset.id; const idx = appData.chartGroupOrder.indexOf(id);
-        if (idx > 0) { [appData.chartGroupOrder[idx - 1], appData.chartGroupOrder[idx]] = [appData.chartGroupOrder[idx], appData.chartGroupOrder[idx - 1]]; saveData(); updateView(); }
-        return;
-      }
-      if (e.target.closest('.move-cg-down-btn')) {
-        const btn = e.target.closest('.move-cg-down-btn'); if (btn.disabled) return;
-        const id = btn.dataset.id; const idx = appData.chartGroupOrder.indexOf(id);
-        if (idx < appData.chartGroupOrder.length - 1) { [appData.chartGroupOrder[idx + 1], appData.chartGroupOrder[idx]] = [appData.chartGroupOrder[idx], appData.chartGroupOrder[idx + 1]]; saveData(); updateView(); }
-        return;
-      }
-
       if (e.target.closest('#confirm-cancel-btn')) { confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
       if (e.target.closest('#confirm-ok-btn')) { if (confirmModalState.onConfirm) confirmModalState.onConfirm(); confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
       if (e.target.closest('#alert-ok-btn')) { alertModalState.isOpen = false; updateView(); return; }
@@ -1308,7 +1297,6 @@
       if (e.target.id === 'cycle-select') { const [y, m] = e.target.value.split('-').map(Number); viewCycleDate = getCycleFromYearMonth(y, m); updateView(); }
       if (e.target.id === 'toggle-fixed-chart') { includeFixedCostsInChart = e.target.checked; updateView(); }
       
-      // ★ 前月比の表示切り替え
       if (e.target.id === 'toggle-mom-diff') {
           showMoMDiff = e.target.checked;
           if (!appData.settings) appData.settings = {};
