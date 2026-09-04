@@ -5,14 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>家計簿</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      theme: { extend: { spacing: { 'safe': 'env(safe-area-inset-bottom)' } } }
-    }
+    tailwind.config = { theme: { extend: { spacing: { 'safe': 'env(safe-area-inset-bottom)' } } } }
   </script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
@@ -26,7 +22,6 @@
 </head>
 <body class="bg-gray-900 h-[100dvh] w-full font-sans text-gray-800 flex justify-center overflow-hidden">
   
-  <!-- ★ ログイン画面 (未ログイン時に表示) ★ -->
   <div id="login-screen" class="absolute inset-0 z-50 bg-gray-50 flex flex-col items-center justify-center hidden">
     <div class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full mx-4">
       <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -42,9 +37,7 @@
   </div>
 
   <div id="app-container" class="w-full max-w-md bg-gray-100 h-full flex flex-col relative shadow-2xl overflow-hidden hidden">
-    <!-- Header -->
     <header id="header" class="bg-white px-4 py-3 shadow-sm z-10 flex justify-between items-center border-b border-gray-200 shrink-0"></header>
-    <!-- Main Content Area -->
     <main id="main" class="flex-1 overflow-hidden relative bg-gray-50">
       <div id="tab-home" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 hidden"></div>
       <div id="tab-history" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 hidden"></div>
@@ -52,21 +45,15 @@
       <div id="tab-yearly" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 hidden"></div>
       <div id="tab-settings" class="h-full overflow-y-auto overflow-x-hidden pb-20 px-4 pt-4 space-y-4 relative hidden"></div>
     </main>
-    <!-- Bottom Navigation -->
     <nav id="nav" class="bg-white border-t border-gray-200 w-full px-2 py-2 flex justify-between items-center z-20 pb-safe shrink-0"></nav>
-    <!-- Modals -->
     <div id="modals" class="relative z-50"></div>
   </div>
 
-  <!-- Firebase SDK (Modular) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-    // ==========================================
-    // ★ Firebase Config ★
-    // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyAW0RzaHk4UJmOzT5Yej23YWcJsVcMVPVA",
       authDomain: "kakeibo-8ffc5.firebaseapp.com",
@@ -82,12 +69,8 @@
     const db = getFirestore(app);
     let currentUser = null;
 
-    // ★ 以前のGASのURL (データ引き継ぎ用) ★
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwuG0Zj3zl4n7o-Y-YGDz8ASqLKD7R8mT8ZvNcWzwkna6JK68gmwZTAo6D2UNZYI9vM/exec"; 
 
-    // ==========================================
-    // 1. Utility Functions
-    // ==========================================
     const escapeHTML = (str) => {
       if (!str) return '';
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -115,20 +98,13 @@
     };
     const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
-    // ==========================================
-    // 2. Data Management (Firebase Firestore)
-    // ==========================================
     const initialData = {
       budget: { monthly: 200000, yearly: 2400000, yearlyIncome: 3500000 },
       categories: [
-        { id: 1, name: '食費', type: 'variable' },
-        { id: 2, name: '日用品', type: 'variable' },
-        { id: 3, name: '交通費', type: 'variable' },
-        { id: 4, name: '交際費', type: 'variable' },
-        { id: 5, name: '趣味', type: 'variable' },
-        { id: 9, name: 'その他', type: 'variable' },
-        { id: 101, name: '出張手当', type: 'income' },
-        { id: 102, name: 'その他収入', type: 'income' }
+        { id: 1, name: '食費', type: 'variable' }, { id: 2, name: '日用品', type: 'variable' },
+        { id: 3, name: '交通費', type: 'variable' }, { id: 4, name: '交際費', type: 'variable' },
+        { id: 5, name: '趣味', type: 'variable' }, { id: 9, name: 'その他', type: 'variable' },
+        { id: 101, name: '出張手当', type: 'income' }, { id: 102, name: 'その他収入', type: 'income' }
       ],
       fixedCosts: [
         { id: 1, name: '家賃', amount: 80000, withdrawalDay: 25 },
@@ -155,14 +131,12 @@
     
     let isSyncing = false;
 
-    // ★ Firestoreへの保存処理 (爆速) ★
     const saveData = async () => {
       if (!currentUser) return;
       isSyncing = true;
       updateSyncStatusUI();
       try {
         await setDoc(doc(db, "users", currentUser.uid), appData);
-        // 保存成功（体感ゼロ秒）
       } catch (e) {
         alert("データの保存に失敗しました");
       }
@@ -191,11 +165,15 @@
 
     const sanitizeAppData = () => {
       if (!appData) appData = JSON.parse(JSON.stringify(initialData));
+      if (appData.settings) delete appData.settings;
       if (!appData.budget) appData.budget = initialData.budget;
       if (!appData.categories) appData.categories = initialData.categories;
       if (!appData.fixedCosts) appData.fixedCosts = initialData.fixedCosts;
       if (!appData.specialTransactions) appData.specialTransactions = [];
       if (!appData.expenses) appData.expenses = [];
+      if (!appData.categories.some(c => c.type === 'income')) {
+        appData.categories.push({ id: 101, name: '出張手当', type: 'income' }, { id: 102, name: 'その他収入', type: 'income' });
+      }
     };
 
     const getCategoryName = (id) => {
@@ -233,9 +211,6 @@
       }
     };
 
-    // ==========================================
-    // UI Rendering (変更なしのベース部分は省略せず記述)
-    // ==========================================
     const renderHeaderHTML = (viewCycle) => {
       const realCurrentCycle = getCycle(new Date());
       const cycles = new Map();
@@ -356,7 +331,7 @@
     };
 
     const renderHistoryHTML = (currentCycle) => {
-       const cycleExpenses = appData.expenses.filter(e => {
+      const cycleExpenses = appData.expenses.filter(e => {
         const d = new Date(e.date); d.setHours(0,0,0,0);
         const start = new Date(currentCycle.startDate); start.setHours(0,0,0,0);
         const end = new Date(currentCycle.endDate); end.setHours(0,0,0,0);
@@ -365,6 +340,67 @@
 
       const totalExpense = cycleExpenses.filter(e => e.type !== 'income').reduce((sum, exp) => sum + exp.amount, 0);
       const totalIncome = cycleExpenses.filter(e => e.type === 'income').reduce((sum, exp) => sum + exp.amount, 0);
+
+      const categoryTotals = cycleExpenses.reduce((acc, exp) => {
+        const keyId = String(exp.categoryId) === 'fixed_auto' ? exp.fixedCostId : exp.categoryId;
+        if(!acc[keyId]) acc[keyId] = { amount: 0, type: exp.type };
+        acc[keyId].amount += exp.amount;
+        return acc;
+      }, {});
+
+      const sortedVariable = []; const sortedFixed = []; const sortedIncome = [];
+      let totalVariable = 0; let totalFixed = 0; let totalIncomeCat = 0;
+
+      Object.entries(categoryTotals).forEach(([id, data]) => {
+         if (data.type === 'fixed') { sortedFixed.push({ id, ...data }); totalFixed += data.amount; } 
+         else if (data.type === 'expense' || data.type === 'variable') { sortedVariable.push({ id, ...data }); totalVariable += data.amount; } 
+         else if (data.type === 'income') { sortedIncome.push({ id, ...data }); totalIncomeCat += data.amount; }
+      });
+      sortedVariable.sort((a, b) => b.amount - a.amount);
+      sortedFixed.sort((a, b) => b.amount - a.amount);
+      sortedIncome.sort((a, b) => b.amount - a.amount);
+
+      let subtotalsHTML = '';
+      if (sortedVariable.length > 0 || sortedFixed.length > 0 || sortedIncome.length > 0) {
+        subtotalsHTML = `
+          <div class="border-t border-gray-100 pt-3 mt-4 text-left">
+            <div class="text-xs text-gray-500 font-bold mb-3">カテゴリ別小計</div>
+            <div class="space-y-3">
+              ${sortedVariable.length > 0 ? `
+              <div class="bg-emerald-50/70 rounded-xl p-3 border border-emerald-100/50 shadow-sm">
+                <div class="flex justify-between items-center text-sm font-bold text-emerald-800 border-b border-emerald-200/50 pb-2 mb-2">
+                  <span>変動費</span><span>${formatCurrency(totalVariable)}</span>
+                </div>
+                <div class="space-y-1.5 pl-1">
+                  ${sortedVariable.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-emerald-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-emerald-900">${formatCurrency(cat.amount)}</span></div>`).join('')}
+                </div>
+              </div>` : ''}
+              ${sortedFixed.length > 0 ? `
+              <details class="group bg-indigo-50/70 rounded-xl border border-indigo-100/50 shadow-sm">
+                <summary class="flex justify-between items-center cursor-pointer list-none p-3 font-bold text-sm text-indigo-800 [&::-webkit-details-marker]:hidden">
+                  <div class="flex items-center"><i data-lucide="chevron-right" class="w-4 h-4 mr-1 transition-transform group-open:rotate-90"></i><span>固定費</span></div>
+                  <span>${formatCurrency(totalFixed)}</span>
+                </summary>
+                <div class="px-3 pb-3 space-y-1.5 border-t border-indigo-200/50 pt-2">
+                  ${sortedFixed.map(cat => {
+                     const sampleExp = cycleExpenses.find(e => String(e.fixedCostId) === String(cat.id) || String(e.categoryId) === String(cat.id));
+                     const name = sampleExp?.type === 'fixed' ? (sampleExp.name || getCategoryName(sampleExp.categoryId)) : getCategoryName(cat.id);
+                     return `<div class="flex justify-between items-center text-xs"><span class="text-indigo-700">${escapeHTML(name)}</span><span class="font-bold text-indigo-900">${formatCurrency(cat.amount)}</span></div>`;
+                  }).join('')}
+                </div>
+              </details>` : ''}
+              ${sortedIncome.length > 0 ? `
+              <div class="bg-blue-50/70 rounded-xl p-3 border border-blue-100/50 shadow-sm">
+                <div class="flex justify-between items-center text-sm font-bold text-blue-800 border-b border-blue-200/50 pb-2 mb-2">
+                  <span>収入</span><span>+${formatCurrency(totalIncomeCat)}</span>
+                </div>
+                <div class="space-y-1.5 pl-1">
+                  ${sortedIncome.map(cat => `<div class="flex justify-between items-center text-xs"><span class="text-blue-700">${escapeHTML(getCategoryName(cat.id))}</span><span class="font-bold text-blue-900">+${formatCurrency(cat.amount)}</span></div>`).join('')}
+                </div>
+              </div>` : ''}
+            </div>
+          </div>`;
+      }
 
       let listHTML = cycleExpenses.length === 0 ? `<div class="text-center text-gray-400 mt-10">まだ記録がありません</div>` : 
         `<div class="space-y-3">` + cycleExpenses.map(exp => {
@@ -385,6 +421,7 @@
               </div>
               <div class="flex items-center shrink-0">
                 <span class="font-bold ${isIncome ? 'text-blue-600' : 'text-gray-800'} mr-3">${isIncome ? '+' : '-'}${formatCurrency(exp.amount)}</span>
+                <button class="edit-exp-btn text-gray-300 hover:text-blue-500 transition-colors mr-2" data-id="${exp.id}"><i data-lucide="edit-2" class="w-4 h-4 pointer-events-none"></i></button>
                 <button class="del-exp-btn text-gray-300 hover:text-red-500 transition-colors" data-id="${exp.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
               </div>
             </div>`;
@@ -392,25 +429,189 @@
 
       return `
         <h2 class="text-lg font-bold text-gray-800 mb-4">${currentCycle.year}年${currentCycle.month}月度の履歴</h2>
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex justify-around text-center">
-          <div><div class="text-sm text-gray-500">支出合計</div><div class="text-2xl font-bold text-gray-800">${formatCurrency(totalExpense)}</div></div>
-          <div><div class="text-sm text-gray-500">収入合計</div><div class="text-2xl font-bold text-blue-600">${formatCurrency(totalIncome)}</div></div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 text-center">
+          <div class="flex justify-around mb-2">
+            <div><div class="text-sm text-gray-500">支出合計</div><div class="text-2xl font-bold text-gray-800">${formatCurrency(totalExpense)}</div></div>
+            <div><div class="text-sm text-gray-500">収入合計</div><div class="text-2xl font-bold text-blue-600">${formatCurrency(totalIncome)}</div></div>
+          </div>
+          ${subtotalsHTML}
+        </div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-gray-500">一覧</h3>
+          ${cycleExpenses.length > 0 ? `<button id="export-csv-btn" class="text-emerald-600 text-sm flex items-center font-bold hover:text-emerald-700 bg-emerald-50 px-2 py-1 rounded"><i data-lucide="download" class="w-4 h-4 mr-1"></i>エクスポート</button>` : ''}
         </div>
         ${listHTML}
       `;
     };
 
-    const renderTodoHTML = () => { return `<h2 class="text-lg font-bold">準備中（To-Doは元のコード同様）</h2>`; };
-    const renderYearlyHTML = (currentCycle) => { return `<h2 class="text-lg font-bold">準備中（年次は元のコード同様）</h2>`; };
+    const renderTodoHTML = () => {
+      let listHTML = todoList.map(todo => `
+        <div class="todo-item flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100 mb-2" id="todo-item-${todo.id}">
+          <label class="flex items-center flex-1 cursor-pointer">
+            <input type="checkbox" class="todo-check w-5 h-5 text-emerald-500 rounded border-gray-300 focus:ring-emerald-500 mr-3" data-id="${todo.id}">
+            <span class="text-sm text-gray-800 font-medium">${escapeHTML(todo.text)}</span>
+          </label>
+        </div>
+      `).join('');
+      if (todoList.length === 0) listHTML = `<div class="text-center text-gray-400 mt-10">タスクはありません</div>`;
+
+      return `
+        <h2 class="text-lg font-bold text-gray-800 mb-4">チェックリスト</h2>
+        <form id="add-todo-form" class="flex space-x-2 mb-6">
+          <input type="text" id="new-todo-text" placeholder="項目を追加" class="flex-1 p-3 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm" required />
+          <button type="submit" class="bg-emerald-500 text-white px-4 py-3 rounded-xl text-sm font-bold hover:bg-emerald-600 shadow-sm transition-colors">追加</button>
+        </form>
+        <div class="todo-container">${listHTML}</div>
+      `;
+    };
+
+    const renderYearlyHTML = (currentCycle) => {
+      const targetYear = currentCycle.year;
+      const specialInThisYear = appData.specialTransactions.filter(t => t.year === targetYear || !t.year);
+      const monthlyTotals = {};
+      const usedCategories = new Set();
+      
+      appData.expenses.filter(e => e.type !== 'income').forEach(e => {
+        if (!includeFixedCostsInChart && e.type === 'fixed') return;
+        const c = getCycle(new Date(e.date));
+        const key = `${c.year}-${String(c.month).padStart(2, '0')}`;
+        if (!monthlyTotals[key]) monthlyTotals[key] = { year: c.year, month: c.month, amount: 0, items: {} };
+        monthlyTotals[key].amount += e.amount;
+        
+        const catId = e.type === 'fixed' ? (e.fixedCostId || e.categoryId) : e.categoryId;
+        if (!monthlyTotals[key].items[catId]) monthlyTotals[key].items[catId] = 0;
+        monthlyTotals[key].items[catId] += e.amount;
+        usedCategories.add(catId);
+      });
+
+      const sortedMonths = Object.keys(monthlyTotals).sort().map(k => monthlyTotals[k]);
+      const getCategoryColor = (id) => {
+        const chartColors = ['bg-[#4e79a7]', 'bg-[#f28e2b]', 'bg-[#e15759]', 'bg-[#76b7b2]', 'bg-[#59a14f]', 'bg-[#edc948]', 'bg-[#b07aa1]', 'bg-[#ff9da7]', 'bg-[#9c755f]', 'bg-[#bab0ac]'];
+        const allItems = [...appData.categories.filter(c => c.type === 'variable'), ...appData.fixedCosts];
+        const index = allItems.findIndex(item => String(item.id) === String(id));
+        if (index !== -1) return chartColors[index % chartColors.length];
+        let val = 0; const strId = String(id);
+        for(let i=0; i<strId.length; i++) { val = (val << 5) - val + strId.charCodeAt(i); val |= 0; }
+        return chartColors[Math.abs(val) % chartColors.length];
+      };
+
+      const getName = (id) => {
+         let cat = appData.categories.find(c => String(c.id) === String(id));
+         if (cat) return cat.name;
+         let fc = appData.fixedCosts.find(f => String(f.id) === String(id));
+         if (fc) return fc.name;
+         return '未選択';
+      };
+
+      let graphHTML = '';
+      if (sortedMonths.length > 0) {
+        const maxAmount = Math.max(...sortedMonths.map(m => m.amount));
+        const legendItemsHTML = Array.from(usedCategories).map(id => `
+          <div class="flex items-center mr-3 mb-1"><span class="w-2.5 h-2.5 rounded-full ${getCategoryColor(id)} mr-1"></span><span class="text-[10px] text-gray-500">${escapeHTML(getName(id))}</span></div>
+        `).join('');
+        const legendHTML = `<div class="flex flex-wrap mt-3 pt-3 border-t border-gray-50">${legendItemsHTML}</div>`;
+        
+        graphHTML = `
+          <div class="w-full h-[160px] overflow-x-auto flex items-end space-x-4 pb-2 px-1 snap-x scroll-smooth custom-scrollbar">
+            ${sortedMonths.map(m => {
+              const heightPercentage = maxAmount > 0 ? Math.max((m.amount / maxAmount) * 100, 2) : 2; 
+              const blocksHTML = Object.entries(m.items).sort(([, a], [, b]) => b - a).map(([id, amt]) => `<div class="w-full ${getCategoryColor(id)}" style="height: ${(amt / m.amount) * 100}%;"></div>`).join('');
+              return `
+                <div class="flex flex-col items-center justify-end h-full shrink-0 snap-end w-14">
+                  <span class="text-[9px] font-medium text-gray-500 mb-1 whitespace-nowrap">${new Intl.NumberFormat('ja-JP').format(m.amount)}</span>
+                  <div class="w-full flex-1 flex items-end"><div class="w-full flex flex-col-reverse rounded-t-sm overflow-hidden" style="height: ${heightPercentage}%;">${blocksHTML}</div></div>
+                  <span class="text-[10px] font-bold text-gray-600 mt-2 whitespace-nowrap">${m.year % 100}/${m.month}</span>
+                </div>`;
+            }).join('')}
+          </div>${legendHTML}`;
+      } else { graphHTML = `<div class="text-center text-sm text-gray-400 py-10">データがありません</div>`; }
+
+      const monthlyCategoryTotals = {};
+      appData.expenses.filter(e => e.type === 'variable' && new Date(e.date).getFullYear() === targetYear).forEach(e => {
+        if (!monthlyCategoryTotals[e.categoryId]) monthlyCategoryTotals[e.categoryId] = 0;
+        monthlyCategoryTotals[e.categoryId] += e.amount;
+      });
+      const categoryAverages = appData.categories.filter(c => c.type === 'variable').map(cat => ({ id: cat.id, name: cat.name, avg: Math.round((monthlyCategoryTotals[cat.id] || 0) / 12) }));
+
+      let specialHTML = specialInThisYear.sort((a, b) => a.month - b.month).map(st => `
+        <div class="p-4 flex justify-between items-center border-b border-gray-50 last:border-0">
+          <div class="flex items-center min-w-0 pr-3">
+            <div class="w-8 h-8 rounded-full bg-gray-100 flex justify-center items-center font-bold text-gray-600 mr-3 text-sm shrink-0">${st.month}月</div>
+            <div class="min-w-0"><div class="font-medium text-gray-800 truncate text-sm">${escapeHTML(st.name)}</div>${st.memo ? `<div class="text-[10px] text-gray-500 truncate">${escapeHTML(st.memo)}</div>` : ''}</div>
+          </div>
+          <div class="flex items-center shrink-0"><span class="font-bold ${st.type === 'income' ? 'text-blue-600' : 'text-red-600'}">${st.type === 'income' ? '+' : '-'}${formatCurrency(st.amount)}</span></div>
+        </div>
+      `).join('');
+      if (specialInThisYear.length === 0) specialHTML = `<div class="p-4 text-center text-sm text-gray-400">登録されていません</div>`;
+
+      let fixedHTML = appData.fixedCosts.map(fc => `<div class="p-2 flex justify-between"><span class="text-gray-600 truncate mr-2">${escapeHTML(fc.name)}</span><span class="font-bold">${formatCurrency(fc.amount * 12)}</span></div>`).join('');
+      if (appData.fixedCosts.length === 0) fixedHTML = `<div class="p-2 text-gray-400">なし</div>`;
+
+      return `
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative mb-4">
+          <div class="flex justify-between items-center mb-2">
+            <h2 class="text-sm font-semibold text-gray-700 flex items-center"><i data-lucide="bar-chart-2" class="w-4 h-4 mr-2 text-emerald-500"></i>月別支出推移</h2>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggle-fixed-chart" class="sr-only peer" ${includeFixedCostsInChart ? 'checked' : ''}>
+              <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+              <span class="ml-2 text-xs font-medium text-gray-500">固定費を含む</span>
+            </label>
+          </div>
+          ${graphHTML}
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i>固定費(年間)</div><div class="divide-y divide-gray-50 text-xs">${fixedHTML}</div></div>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"><div class="bg-gray-50 p-2 border-b border-gray-100 font-bold text-xs text-gray-700 flex items-center"><i data-lucide="trending-down" class="w-3 h-3 mr-1"></i>変動費(月平均)</div><div class="divide-y divide-gray-50 text-xs">${categoryAverages.map(cat => `<div class="p-2 flex justify-between"><span class="text-gray-600 truncate mr-2">${escapeHTML(cat.name)}</span><span class="font-bold">${formatCurrency(cat.avg)}</span></div>`).join('')}</div></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[250px] max-h-[320px] mt-4">
+          <div class="bg-gray-50 p-3 border-b border-gray-100 font-bold text-sm text-gray-700 flex items-center justify-between shrink-0"><div class="flex items-center"><i data-lucide="calendar" class="w-4 h-4 mr-2"></i>特別収支</div></div>
+          <div class="overflow-y-auto">${specialHTML}</div>
+        </div>
+      `;
+    };
 
     const renderSettingsHTML = () => {
-      // ★ ログアウトボタンとデータ移行ボタンを追加 ★
+      const renderCatChips = (cats) => cats.map((cat, index, array) => `
+        <div class="bg-white border border-gray-200 text-gray-700 text-sm pl-3 pr-1 py-1 rounded-full flex items-center shadow-sm max-w-full">
+          <span class="truncate mr-2 font-medium">${escapeHTML(cat.name)}</span>
+          <div class="flex items-center space-x-1 border-l border-gray-100 pl-1 shrink-0">
+            <button type="button" class="move-cat-up-btn text-gray-400 hover:text-emerald-500 p-1 disabled:opacity-30 disabled:hover:text-gray-400 transition-colors" data-id="${cat.id}" ${index === 0 ? 'disabled' : ''}><i data-lucide="chevron-left" class="w-4 h-4 pointer-events-none"></i></button>
+            <button type="button" class="move-cat-down-btn text-gray-400 hover:text-emerald-500 p-1 disabled:opacity-30 disabled:hover:text-gray-400 transition-colors" data-id="${cat.id}" ${index === array.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-right" class="w-4 h-4 pointer-events-none"></i></button>
+            <button type="button" class="open-del-cat-btn text-gray-400 hover:text-red-500 p-1 ml-1 transition-colors" data-id="${cat.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+          </div>
+        </div>
+      `).join('');
+
+      let varCatChipsHTML = renderCatChips(appData.categories.filter(c => c.type === 'variable'));
+      let incCatChipsHTML = renderCatChips(appData.categories.filter(c => c.type === 'income'));
+
+      let fixedHTML = appData.fixedCosts.map(fc => `
+        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg gap-2">
+          <div class="min-w-0 flex-1"><div class="font-medium text-sm truncate">${escapeHTML(fc.name)}</div><div class="text-xs text-gray-500 mt-0.5 truncate">${fc.withdrawalDay === 99 ? '月末' : `${fc.withdrawalDay}日`}引き落とし</div></div>
+          <div class="flex items-center shrink-0"><div class="font-bold text-gray-700 mr-3">${formatCurrency(fc.amount)}</div><button type="button" class="del-fixed-btn text-gray-300 hover:text-red-500" data-id="${fc.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button></div>
+        </div>
+      `).join('');
+
+      let fixedFormHTML = showFixedForm ? `
+        <form id="add-fixed-form" class="mt-4 p-3 bg-emerald-50 rounded-lg space-y-3">
+          <input type="text" id="new-fixed-name" placeholder="固定費名" class="w-full p-2 text-sm border rounded" required />
+          <div class="grid grid-cols-2 gap-2"><input type="number" id="new-fixed-amount" placeholder="金額" class="w-full p-2 text-sm border rounded" required /><select id="new-fixed-day" class="w-full p-2 text-sm border rounded bg-white" required><option value="">引落日</option>${Array.from({length: 31}, (_, i) => `<option value="${i+1}">${i+1}日</option>`).join('')}<option value="99">月末</option></select></div>
+          <div class="grid grid-cols-2 gap-2"><button type="submit" class="w-full bg-emerald-500 text-white text-sm py-2 rounded">追加</button><button type="button" id="cancel-fixed-form-btn" class="w-full bg-gray-300 text-gray-700 text-sm py-2 rounded">キャンセル</button></div>
+        </form>
+      ` : `<button id="toggle-fixed-form-btn" class="mt-4 w-full border border-dashed border-gray-300 text-gray-500 py-2 rounded-lg text-sm hover:bg-gray-50 flex justify-center items-center"><i data-lucide="plus" class="w-4 h-4 mr-1"></i> 固定費を追加</button>`;
+
+      let specialHTML = appData.specialTransactions.sort((a, b) => b.year - a.year || a.month - b.month).map(st => `
+        <div class="p-3 flex justify-between items-center bg-gray-50 gap-2 border-b border-gray-100 last:border-0">
+          <div class="flex items-center min-w-0 flex-1"><span class="text-[10px] font-bold text-gray-600 mr-2 bg-white px-2 py-1 rounded shadow-sm shrink-0">${st.year}年${st.month}月</span><div class="min-w-0 pr-2"><div class="text-sm font-medium text-gray-800 truncate">${escapeHTML(st.name)}</div>${st.memo ? `<div class="text-[10px] text-gray-500 truncate">${escapeHTML(st.memo)}</div>` : ''}</div></div>
+          <div class="flex items-center shrink-0"><span class="text-sm font-bold mr-3 ${st.type === 'income' ? 'text-blue-600' : 'text-red-600'}">${st.type === 'income' ? '+' : '-'}${formatCurrency(st.amount)}</span><button type="button" class="edit-special-btn text-gray-400 hover:text-blue-500 mr-2" data-id="${st.id}"><i data-lucide="edit-2" class="w-4 h-4 pointer-events-none"></i></button><button type="button" class="del-special-btn text-gray-400 hover:text-red-500" data-id="${st.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button></div>
+        </div>
+      `).join('');
+      if (appData.specialTransactions.length === 0) specialHTML = `<div class="p-3 text-center text-sm text-gray-400">登録されていません</div>`;
+      const currY = new Date().getFullYear();
+
       return `
         <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <div class="flex justify-between items-center mb-4 border-b pb-2">
-            <h3 class="font-bold text-gray-800">アカウント設定</h3>
-            <span class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-full">${currentUser?.email}</span>
-          </div>
+          <div class="flex justify-between items-center mb-4 border-b pb-2"><h3 class="font-bold text-gray-800">アカウント設定</h3><span class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-full">${currentUser?.email}</span></div>
           <button id="migrate-gas-btn" class="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 py-3 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors mb-3 flex items-center justify-center shadow-sm">
             <i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ
           </button>
@@ -419,12 +620,88 @@
           </button>
         </section>
 
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
           <h3 class="font-bold text-gray-800 mb-3 border-b pb-2">予算設定</h3>
-          <input type="number" id="budget-month-input" value="${appData?.budget?.monthly || 200000}" class="w-full p-2 border rounded-lg text-sm mb-2" />
+          <input type="number" id="budget-month-input" value="${escapeHTML(appData.budget.monthly)}" class="w-full p-2 border rounded-lg text-sm mb-2" />
           <button id="save-budget-btn" class="w-full bg-gray-800 text-white py-2 rounded-lg font-medium text-sm">保存する</button>
         </section>
+
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+          <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">カテゴリ設定</h3>
+          <div class="mb-5"><h4 class="text-sm font-bold text-gray-700 mb-2">支出カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${varCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="variable"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-emerald-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div>
+          <div><h4 class="text-sm font-bold text-gray-700 mb-2">収入カテゴリ</h4><div class="flex flex-wrap gap-2 mb-3">${incCatChipsHTML}</div><form class="add-category-form flex space-x-2" data-type="income"><input type="text" placeholder="カテゴリ追加" class="new-cat-name flex-1 p-2 text-sm border rounded bg-gray-50" required /><button type="submit" class="bg-blue-500 text-white px-3 py-2 rounded text-sm font-medium">追加</button></form></div>
+        </section>
+
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+          <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">固定費設定</h3>
+          <div class="space-y-3">${fixedHTML}</div>${fixedFormHTML}
+        </section>
+
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+          <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">特別収支設定</h3>
+          <div class="mb-4 border border-gray-100 rounded-lg max-h-48 overflow-y-auto">${specialHTML}</div>
+          <form id="add-special-form" class="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="grid grid-cols-3 gap-2"><select id="st-year" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="${currY}">${currY}年</option><option value="${currY + 1}">${currY + 1}年</option></select><select id="st-month" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white">${Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}月</option>`).join('')}</select><select id="st-type" class="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"><option value="expense">支出</option><option value="income">収入</option></select></div>
+            <div class="grid grid-cols-2 gap-2"><input type="text" id="st-name" placeholder="項目名" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /><input type="number" id="st-amount" placeholder="金額" class="w-full p-2 border border-blue-200 rounded-lg text-sm" required /></div>
+            <input type="text" id="st-memo" placeholder="メモ (任意)" class="w-full p-2 border border-blue-200 rounded-lg text-sm" /><button type="submit" class="w-full bg-blue-600 text-white text-sm py-2 rounded-lg font-medium">追加</button>
+          </form>
+        </section>
       `;
+    };
+
+    const renderModals = () => {
+      const container = document.getElementById('modals');
+      let modalHTML = '';
+
+      if (deleteCatModalState.isOpen) {
+        const targetCat = appData.categories.find(c => String(c.id) === String(deleteCatModalState.catId));
+        const transferCategories = appData.categories.filter(c => c.type === targetCat?.type && String(c.id) !== String(deleteCatModalState.catId));
+        let optionsHTML = `<option value="">未選択にする</option>` + transferCategories.map(c => `<option value="${c.id}">${escapeHTML(c.name)} に変更</option>`).join('');
+        modalHTML += `<div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">ラベル削除</h3><div class="mb-6"><select id="transfer-cat-select" class="w-full p-3 border rounded-xl text-sm">${optionsHTML}</select></div><div class="flex space-x-3"><button id="close-cat-modal-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button id="exec-del-cat-btn" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-sm">削除</button></div></div></div>`;
+      }
+
+      if (editExpenseModalState.isOpen) {
+        const exp = appData.expenses.find(e => String(e.id) === String(editExpenseModalState.expId));
+        if (exp) {
+          const isFixed = exp.type === 'fixed';
+          let catOptions = isFixed ? '' : appData.categories.filter(c => c.type === exp.type).map(c => `<option value="${c.id}" ${String(c.id) === String(exp.categoryId) ? 'selected' : ''}>${escapeHTML(c.name)}</option>`).join('');
+          modalHTML += `
+            <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+              <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                <h3 class="font-bold mb-4">記録の編集</h3>
+                <form id="edit-expense-form" class="space-y-4">
+                  <input type="hidden" id="edit-exp-id" value="${exp.id}">
+                  ${isFixed ? `<div class="text-sm font-bold bg-blue-50 p-3 rounded-lg">${escapeHTML(exp.name || '固定費')}</div>` : `<div><label class="block text-xs mb-1">カテゴリ</label><select id="edit-exp-cat" class="w-full p-2 border rounded-xl">${catOptions}</select></div>`}
+                  <div><label class="block text-xs mb-1">金額</label><input type="number" id="edit-exp-amount" value="${escapeHTML(exp.amount)}" class="w-full p-2 border rounded-xl" required></div>
+                  <div><label class="block text-xs mb-1">日付</label><input type="date" id="edit-exp-date" value="${escapeHTML(exp.date)}" class="w-full p-2 border rounded-xl" required></div>
+                  <div><label class="block text-xs mb-1">メモ</label><input type="text" id="edit-exp-memo" value="${escapeHTML(exp.memo || '')}" class="w-full p-2 border rounded-xl"></div>
+                  <div class="flex space-x-3"><button type="button" id="close-edit-exp-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button type="submit" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">保存</button></div>
+                </form>
+              </div>
+            </div>`;
+        }
+      }
+
+      if (editSpecialModalState.isOpen) {
+        const st = appData.specialTransactions.find(s => String(s.id) === String(editSpecialModalState.stId));
+        if (st) {
+          const currY = new Date().getFullYear();
+          modalHTML += `
+            <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"><h3 class="font-bold mb-4">特別収支の編集</h3><form id="edit-special-form" class="space-y-4">
+              <input type="hidden" id="edit-st-id" value="${st.id}">
+              <div class="grid grid-cols-2 gap-2"><div><label class="block text-xs mb-1">年</label><select id="edit-st-year" class="w-full p-2 border rounded-xl"><option value="${currY}" ${st.year === currY ? 'selected' : ''}>${currY}年</option><option value="${currY + 1}" ${st.year === currY + 1 ? 'selected' : ''}>${currY + 1}年</option></select></div><div><label class="block text-xs mb-1">月</label><select id="edit-st-month" class="w-full p-2 border rounded-xl">${Array.from({length: 12}, (_, i) => `<option value="${i+1}" ${st.month === i+1 ? 'selected' : ''}>${i+1}月</option>`).join('')}</select></div></div>
+              <div class="grid grid-cols-2 gap-2"><div><label class="block text-xs mb-1">種類</label><select id="edit-st-type" class="w-full p-2 border rounded-xl"><option value="expense" ${st.type === 'expense' ? 'selected' : ''}>支出</option><option value="income" ${st.type === 'income' ? 'selected' : ''}>収入</option></select></div><div><label class="block text-xs mb-1">項目名</label><input type="text" id="edit-st-name" value="${escapeHTML(st.name)}" class="w-full p-2 border rounded-xl" required></div></div>
+              <div><label class="block text-xs mb-1">金額</label><input type="number" id="edit-st-amount" value="${escapeHTML(st.amount)}" class="w-full p-2 border rounded-xl" required></div>
+              <div><label class="block text-xs mb-1">メモ</label><input type="text" id="edit-st-memo" value="${escapeHTML(st.memo || '')}" class="w-full p-2 border rounded-xl"></div>
+              <div class="flex space-x-3"><button type="button" id="close-edit-st-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button type="submit" class="flex-1 bg-blue-500 text-white py-3 rounded-xl font-bold text-sm">保存</button></div>
+            </form></div></div>`;
+        }
+      }
+
+      if (confirmModalState.isOpen) modalHTML += `<div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">確認</h3><p class="text-sm mb-6">${confirmModalState.message}</p><div class="flex space-x-3"><button id="confirm-cancel-btn" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold text-sm">キャンセル</button><button id="confirm-ok-btn" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">OK</button></div></div></div>`;
+      if (alertModalState.isOpen) modalHTML += `<div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold mb-3">お知らせ</h3><p class="text-sm mb-6">${alertModalState.message}</p><button id="alert-ok-btn" class="w-full bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">OK</button></div></div>`;
+
+      container.innerHTML = modalHTML;
     };
 
     const updateView = () => {
@@ -438,61 +715,80 @@
       
       if (activeTab === 'home') activeContainer.innerHTML = renderHomeHTML(currentCycle);
       if (activeTab === 'history') activeContainer.innerHTML = renderHistoryHTML(currentCycle);
-      // todo, yearlyは今回はダミーとして割愛（お手元のコードをそのまま移植してください）
+      if (activeTab === 'todo') activeContainer.innerHTML = renderTodoHTML();
+      if (activeTab === 'yearly') activeContainer.innerHTML = renderYearlyHTML(currentCycle);
       if (activeTab === 'settings') activeContainer.innerHTML = renderSettingsHTML();
       
       document.getElementById('nav').innerHTML = renderNavHTML();
+      renderModals();
       updateSyncStatusUI();
     };
 
-    // ==========================================
-    // Event Listeners
-    // ==========================================
+    const handleExportCSV = () => {
+      const currentCycle = getCycle(viewCycleDate);
+      const cycleExpenses = appData.expenses.filter(e => {
+        const d = new Date(e.date); d.setHours(0,0,0,0);
+        const start = new Date(currentCycle.startDate); start.setHours(0,0,0,0);
+        const end = new Date(currentCycle.endDate); end.setHours(0,0,0,0);
+        return d >= start && d <= end;
+      }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      const header = "日付,項目,金額,メモ\n";
+      const rows = cycleExpenses.map(e => {
+        const d = new Date(e.date);
+        const yyyymmdd = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+        const itemName = e.type === 'fixed' ? (e.name || getCategoryName(e.categoryId)) : getCategoryName(e.categoryId);
+        const memo = e.memo ? `"${e.memo.replace(/"/g, '""')}"` : "";
+        const amt = e.type === 'income' ? e.amount : -e.amount;
+        return `${yyyymmdd},${itemName},${amt},${memo}`;
+      }).join("\n");
+
+      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+      const blob = new Blob([bom, header + rows], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `家計簿履歴_${currentCycle.year}${String(currentCycle.month).padStart(2, '0')}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    };
+
     document.body.addEventListener('click', async (e) => {
       
-      // ★ Google ログイン ★
       const loginBtn = e.target.closest('#login-btn');
       if (loginBtn) {
         const provider = new GoogleAuthProvider();
         signInWithPopup(auth, provider).catch(error => alert('ログインに失敗しました: ' + error.message));
         return;
       }
-
-      // ★ ログアウト ★
       const logoutBtn = e.target.closest('#logout-btn');
-      if (logoutBtn) {
-        if(confirm('ログアウトしますか？')) signOut(auth);
-        return;
-      }
+      if (logoutBtn) { if(confirm('ログアウトしますか？')) signOut(auth); return; }
 
-      // ★ データ移行機能 (GASから吸い上げ) ★
       const migrateBtn = e.target.closest('#migrate-gas-btn');
       if (migrateBtn) {
         if(!confirm("旧システム(GAS)からデータを読み込み、Firebaseに保存しますか？\n※現在のFirebaseのデータは上書きされます")) return;
-        
         migrateBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 mr-2 animate-spin"></i>移行中...';
         try {
-          const response = await fetch(GAS_WEB_APP_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ action: 'load' })
-          });
+          const response = await fetch(GAS_WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'load' }) });
           const result = await response.json();
           if (result.status === 'success' && result.data) {
-            appData = result.data;
-            await saveData(); // Firebaseに即座に保存
-            alert('データの引き継ぎが完了しました！');
-            updateView();
-          } else {
-            alert('GAS側にデータが見つかりませんでした。');
-          }
-        } catch (err) {
-          alert('移行に失敗しました。URLが正しいか確認してください。');
-        }
+            appData = result.data; sanitizeAppData(); await saveData(); alert('引き継ぎが完了しました！'); updateView();
+          } else alert('GAS側にデータが見つかりませんでした。');
+        } catch (err) { alert('移行に失敗しました。'); }
         migrateBtn.innerHTML = '<i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ';
-        lucide.createIcons();
-        return;
+        lucide.createIcons(); return;
       }
+
+      if (e.target.closest('#confirm-cancel-btn')) { confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
+      if (e.target.closest('#confirm-ok-btn')) { if (confirmModalState.onConfirm) confirmModalState.onConfirm(); confirmModalState.isOpen = false; confirmModalState.onConfirm = null; updateView(); return; }
+      if (e.target.closest('#alert-ok-btn')) { alertModalState.isOpen = false; updateView(); return; }
+
+      const editExpBtn = e.target.closest('.edit-exp-btn');
+      if (editExpBtn) { editExpenseModalState.isOpen = true; editExpenseModalState.expId = editExpBtn.dataset.id; renderModals(); lucide.createIcons(); return; }
+      if (e.target.closest('#close-edit-exp-btn')) { editExpenseModalState.isOpen = false; editExpenseModalState.expId = null; renderModals(); return; }
+
+      const editSpecialBtn = e.target.closest('.edit-special-btn');
+      if (editSpecialBtn) { editSpecialModalState.isOpen = true; editSpecialModalState.stId = editSpecialBtn.dataset.id; renderModals(); return; }
+      if (e.target.closest('#close-edit-st-btn')) { editSpecialModalState.isOpen = false; editSpecialModalState.stId = null; renderModals(); return; }
 
       const navBtn = e.target.closest('.nav-btn');
       if (navBtn) { activeTab = navBtn.dataset.tab; updateView(); return; }
@@ -502,81 +798,139 @@
         currentTransactionType = typeBtn.dataset.type;
         const displayCategories = appData.categories.filter(c => c.type === (currentTransactionType === 'expense' ? 'variable' : 'income'));
         if (displayCategories.length > 0) selectedVariableCategoryId = displayCategories[0].id;
-        updateView();
-        return;
+        updateView(); return;
       }
-
       const chipBtn = e.target.closest('.chip-btn');
-      if (chipBtn) {
-        selectedVariableCategoryId = chipBtn.dataset.id;
-        updateView();
-        return;
-      }
-      
+      if (chipBtn) { selectedVariableCategoryId = chipBtn.dataset.id; updateView(); return; }
       const delExpBtn = e.target.closest('.del-exp-btn');
       if (delExpBtn) {
-        if(confirm('この記録を削除しますか？')) {
-          appData.expenses = appData.expenses.filter(exp => String(exp.id) !== String(delExpBtn.dataset.id));
-          saveData();
-          updateView();
-        }
-        return;
+        confirmAction('この記録を削除しますか？', () => { appData.expenses = appData.expenses.filter(exp => String(exp.id) !== String(delExpBtn.dataset.id)); saveData(); updateView(); }); return;
       }
+      if (e.target.closest('#export-csv-btn')) { handleExportCSV(); return; }
+      if (e.target.closest('#save-budget-btn')) { appData.budget.monthly = Number(document.getElementById('budget-month-input').value); saveData(); alertAction('予算を保存しました'); return; }
+      
+      const openDelCatBtn = e.target.closest('.open-del-cat-btn');
+      if (openDelCatBtn) { deleteCatModalState.isOpen = true; deleteCatModalState.catId = openDelCatBtn.dataset.id; renderModals(); return; }
+      if (e.target.closest('#close-cat-modal-btn')) { deleteCatModalState.isOpen = false; deleteCatModalState.catId = null; renderModals(); return; }
+      if (e.target.closest('#exec-del-cat-btn')) {
+        const targetCatId = String(deleteCatModalState.catId);
+        const transferId = document.getElementById('transfer-cat-select')?.value || '';
+        appData.expenses = appData.expenses.map(exp => String(exp.categoryId) === targetCatId ? { ...exp, categoryId: transferId ? Number(transferId) : 'unassigned' } : exp);
+        appData.categories = appData.categories.filter(c => String(c.id) !== targetCatId);
+        saveData(); deleteCatModalState.isOpen = false; deleteCatModalState.catId = null;
+        const displayCategories = appData.categories.filter(c => c.type === (currentTransactionType === 'expense' ? 'variable' : 'income'));
+        if (String(selectedVariableCategoryId) === targetCatId) selectedVariableCategoryId = displayCategories.length > 0 ? displayCategories[0].id : null;
+        updateView(); return;
+      }
+
+      const moveCatUpBtn = e.target.closest('.move-cat-up-btn');
+      if (moveCatUpBtn && !moveCatUpBtn.disabled) {
+        const catIndex = appData.categories.findIndex(c => String(c.id) === String(moveCatUpBtn.dataset.id));
+        if (catIndex > 0) {
+          const currentCat = appData.categories[catIndex]; let prevIndex = -1;
+          for(let i = catIndex - 1; i >= 0; i--) { if(appData.categories[i].type === currentCat.type) { prevIndex = i; break; } }
+          if (prevIndex !== -1) {
+            const temp = appData.categories[prevIndex]; appData.categories[prevIndex] = appData.categories[catIndex]; appData.categories[catIndex] = temp;
+            saveData(); updateView();
+          }
+        } return;
+      }
+      const moveCatDownBtn = e.target.closest('.move-cat-down-btn');
+      if (moveCatDownBtn && !moveCatDownBtn.disabled) {
+        const catIndex = appData.categories.findIndex(c => String(c.id) === String(moveCatDownBtn.dataset.id));
+        if (catIndex > -1 && catIndex < appData.categories.length - 1) {
+          const currentCat = appData.categories[catIndex]; let nextIndex = -1;
+          for(let i = catIndex + 1; i < appData.categories.length; i++) { if(appData.categories[i].type === currentCat.type) { nextIndex = i; break; } }
+          if (nextIndex !== -1) {
+            const temp = appData.categories[nextIndex]; appData.categories[nextIndex] = appData.categories[catIndex]; appData.categories[catIndex] = temp;
+            saveData(); updateView();
+          }
+        } return;
+      }
+      if (e.target.closest('#toggle-fixed-form-btn')) { showFixedForm = true; updateView(); return; }
+      if (e.target.closest('#cancel-fixed-form-btn')) { showFixedForm = false; updateView(); return; }
+      const delFixedBtn = e.target.closest('.del-fixed-btn');
+      if (delFixedBtn) { confirmAction('この固定費を削除しますか？', () => { appData.fixedCosts = appData.fixedCosts.filter(fc => String(fc.id) !== String(delFixedBtn.dataset.id)); saveData(); updateView(); }); return; }
+      const delSpecialBtn = e.target.closest('.del-special-btn');
+      if (delSpecialBtn) { confirmAction('この特別収支を削除しますか？', () => { appData.specialTransactions = appData.specialTransactions.filter(st => String(st.id) !== String(delSpecialBtn.dataset.id)); saveData(); updateView(); }); return; }
     });
 
     document.body.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (e.target.id === 'edit-expense-form') {
+        const id = document.getElementById('edit-exp-id').value; const amount = parseInt(document.getElementById('edit-exp-amount').value, 10);
+        const date = document.getElementById('edit-exp-date').value; const memo = document.getElementById('edit-exp-memo').value;
+        if (isNaN(amount) || !date) return;
+        const expIndex = appData.expenses.findIndex(exp => String(exp.id) === String(id));
+        if (expIndex !== -1) {
+          const isFixed = appData.expenses[expIndex].type === 'fixed';
+          appData.expenses[expIndex].amount = amount; appData.expenses[expIndex].date = date; appData.expenses[expIndex].memo = memo;
+          const c = getCycle(new Date(date)); appData.expenses[expIndex].cycleKey = `${c.year}-${c.month}`;
+          if (!isFixed) { const catId = document.getElementById('edit-exp-cat').value; appData.expenses[expIndex].categoryId = Number(catId) || catId; }
+          saveData(); editExpenseModalState.isOpen = false; editExpenseModalState.expId = null; updateView();
+        } return;
+      }
+      if (e.target.id === 'edit-special-form') {
+        const id = document.getElementById('edit-st-id').value;
+        const year = parseInt(document.getElementById('edit-st-year').value, 10); const month = parseInt(document.getElementById('edit-st-month').value, 10);
+        const type = document.getElementById('edit-st-type').value; const name = document.getElementById('edit-st-name').value;
+        const amount = parseInt(document.getElementById('edit-st-amount').value, 10); const memo = document.getElementById('edit-st-memo').value;
+        if (!name || isNaN(amount)) return;
+        const stIndex = appData.specialTransactions.findIndex(st => String(st.id) === String(id));
+        if (stIndex !== -1) {
+          appData.specialTransactions[stIndex] = { ...appData.specialTransactions[stIndex], year, month, type, name, amount, memo };
+          saveData(); editSpecialModalState.isOpen = false; editSpecialModalState.stId = null; updateView();
+        } return;
+      }
       if (e.target.id === 'home-expense-form') {
-        const amount = parseInt(document.getElementById('home-amount').value, 10);
-        const memo = document.getElementById('home-memo').value;
+        const amount = parseInt(document.getElementById('home-amount').value, 10); const memo = document.getElementById('home-memo').value;
         if (isNaN(amount)) return;
         const category = appData.categories.find(c => String(c.id) === String(selectedVariableCategoryId));
-        
-        appData.expenses.push({
-          id: generateUUID(),
-          date: formatDate(new Date()),
-          categoryId: category ? category.id : selectedVariableCategoryId,
-          amount: amount,
-          type: category ? category.type : currentTransactionType,
-          memo: memo
-        });
-        saveData(); // 保存ボタンを押した瞬間にFirebaseへ送信（一瞬です！）
-        updateView();
+        appData.expenses.push({ id: generateUUID(), date: formatDate(new Date()), categoryId: category ? category.id : selectedVariableCategoryId, amount: amount, type: category ? category.type : currentTransactionType, memo: memo });
+        saveData(); updateView(); return;
+      }
+      if (e.target.classList.contains('add-category-form')) {
+        const type = e.target.dataset.type; const name = e.target.querySelector('.new-cat-name').value;
+        if(!name) return;
+        appData.categories.push({ id: Date.now(), name: name, type: type }); saveData(); updateView(); return;
+      }
+      if (e.target.id === 'add-fixed-form') {
+        const name = document.getElementById('new-fixed-name').value; const amount = parseInt(document.getElementById('new-fixed-amount').value, 10); const day = parseInt(document.getElementById('new-fixed-day').value, 10);
+        if(!name || isNaN(amount) || isNaN(day)) return;
+        appData.fixedCosts.push({ id: generateUUID(), name: name, amount: amount, withdrawalDay: day }); showFixedForm = false; saveData(); updateView(); return;
+      }
+      if (e.target.id === 'add-special-form') {
+        const year = parseInt(document.getElementById('st-year').value, 10); const month = parseInt(document.getElementById('st-month').value, 10);
+        const type = document.getElementById('st-type').value; const name = document.getElementById('st-name').value;
+        const amount = parseInt(document.getElementById('st-amount').value, 10); const memo = document.getElementById('st-memo').value;
+        if(!name || isNaN(amount)) return;
+        appData.specialTransactions.push({ id: generateUUID(), name: name, amount: amount, month: month, year: year, type: type, memo: memo }); saveData(); updateView(); return;
+      }
+      if (e.target.id === 'add-todo-form') {
+        const text = document.getElementById('new-todo-text').value;
+        if (!text) return; todoList.push({ id: generateUUID(), text }); saveTodo(); updateView(); return;
       }
     });
 
-    // ==========================================
-    // 3. Authentication & Realtime Database Sync
-    // ==========================================
-    onAuthStateChanged(auth, (user) => {
-      const loginScreen = document.getElementById('login-screen');
-      const appContainer = document.getElementById('app-container');
-
-      if (user) {
-        currentUser = user;
-        loginScreen.classList.add('hidden');
-        appContainer.classList.remove('hidden');
-
-        // Firestoreのデータをリアルタイム購読（スマホ等で変更があったら即座に反映）
-        onSnapshot(doc(db, "users", user.uid), (docSnap) => {
-          if (docSnap.exists()) {
-            appData = docSnap.data();
-            sanitizeAppData();
-            checkAutoFixedCosts();
-            updateView();
-          } else {
-            // 初回ログイン時は初期データをセット
-            appData = JSON.parse(JSON.stringify(initialData));
-            saveData();
-            updateView();
-          }
-        });
-      } else {
-        currentUser = null;
-        appData = null;
-        loginScreen.classList.remove('hidden');
-        appContainer.classList.add('hidden');
+    document.body.addEventListener('change', (e) => {
+      if (e.target.id === 'cycle-select') { const [y, m] = e.target.value.split('-').map(Number); viewCycleDate = getCycleFromYearMonth(y, m); updateView(); }
+      if (e.target.id === 'toggle-fixed-chart') { includeFixedCostsInChart = e.target.checked; updateView(); }
+      if (e.target.classList.contains('todo-check')) {
+        const id = e.target.dataset.id; const itemEl = document.getElementById(`todo-item-${id}`);
+        if (itemEl) itemEl.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => { todoList = todoList.filter(t => String(t.id) !== String(id)); saveTodo(); updateView(); }, 300);
       }
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      const loginScreen = document.getElementById('login-screen'); const appContainer = document.getElementById('app-container');
+      if (user) {
+        currentUser = user; loginScreen.classList.add('hidden'); appContainer.classList.remove('hidden');
+        onSnapshot(doc(db, "users", user.uid), (docSnap) => {
+          if (docSnap.exists()) { appData = docSnap.data(); sanitizeAppData(); checkAutoFixedCosts(); updateView(); } 
+          else { appData = JSON.parse(JSON.stringify(initialData)); saveData(); updateView(); }
+        });
+      } else { currentUser = null; appData = null; loginScreen.classList.remove('hidden'); appContainer.classList.add('hidden'); }
     });
 
   </script>
