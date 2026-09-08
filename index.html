@@ -1161,7 +1161,16 @@
         updateView(); return;
       }
       const chipBtn = e.target.closest('.chip-btn');
-      if (chipBtn) { selectedVariableCategoryId = chipBtn.dataset.id; updateView(); return; }
+      if (chipBtn) {
+        selectedVariableCategoryId = chipBtn.dataset.id;
+        document.querySelectorAll('#category-chips .chip-btn').forEach(btn => {
+          const isSelected = String(btn.dataset.id) === String(selectedVariableCategoryId);
+          btn.className = `chip-btn px-4 py-2 rounded-full text-sm font-medium transition-colors ${isSelected ? (currentTransactionType === 'expense' ? 'bg-gray-800 text-white shadow-md' : 'bg-blue-600 text-white shadow-md') : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`;
+        });
+        const hiddenInput = document.getElementById('home-selected-category');
+        if (hiddenInput) hiddenInput.value = selectedVariableCategoryId;
+        return;
+      }
       const delExpBtn = e.target.closest('.del-exp-btn');
       if (delExpBtn) {
         confirmAction('この記録を削除しますか？', () => { appData.expenses = appData.expenses.filter(exp => String(exp.id) !== String(delExpBtn.dataset.id)); saveData(); updateView(); }); return;
@@ -1223,7 +1232,15 @@
         if (isNaN(amount)) return;
         const category = appData.categories.find(c => String(c.id) === String(selectedVariableCategoryId));
         appData.expenses.push({ id: generateUUID(), date: formatDate(new Date()), categoryId: category ? category.id : selectedVariableCategoryId, amount: amount, type: category ? category.type : currentTransactionType, memo: memo });
-        saveData(); updateView(); return;
+        saveData(); 
+        
+        // 登録後にカテゴリの選択状態をリセット
+        const displayCategories = appData.categories.filter(c => c.type === (currentTransactionType === 'expense' ? 'variable' : 'income'));
+        if (displayCategories.length > 0) {
+          selectedVariableCategoryId = displayCategories[0].id;
+        }
+        
+        updateView(); return;
       }
       if (e.target.classList.contains('add-category-form')) {
         const type = e.target.dataset.type; const name = e.target.querySelector('.new-cat-name').value;
