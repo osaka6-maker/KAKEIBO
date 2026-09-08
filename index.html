@@ -139,7 +139,7 @@
     let viewCycleDate = new Date();
     
     let currentTransactionType = 'expense';
-    let selectedVariableCategoryId = 1;
+    let selectedVariableCategoryId = null;
     let showFixedForm = false;
     let includeFixedCostsInChart = true;
     
@@ -1156,9 +1156,9 @@
       const typeBtn = e.target.closest('.transaction-type-btn');
       if (typeBtn) {
         currentTransactionType = typeBtn.dataset.type;
-        const displayCategories = appData.categories.filter(c => c.type === (currentTransactionType === 'expense' ? 'variable' : 'income'));
-        if (displayCategories.length > 0) selectedVariableCategoryId = displayCategories[0].id;
-        updateView(); return;
+        selectedVariableCategoryId = null;
+        updateView(); 
+        return;
       }
       const chipBtn = e.target.closest('.chip-btn');
       if (chipBtn) {
@@ -1228,19 +1228,32 @@
         } return;
       }
       if (e.target.id === 'home-expense-form') {
-        const amount = parseInt(document.getElementById('home-amount').value, 10); const memo = document.getElementById('home-memo').value;
+        const amount = parseInt(document.getElementById('home-amount').value, 10); 
+        const memo = document.getElementById('home-memo').value;
         if (isNaN(amount)) return;
+
+        // カテゴリ未選択の場合はアラートを出して中断
+        if (!selectedVariableCategoryId) {
+          alertAction('カテゴリを選択してください');
+          return;
+        }
+
         const category = appData.categories.find(c => String(c.id) === String(selectedVariableCategoryId));
-        appData.expenses.push({ id: generateUUID(), date: formatDate(new Date()), categoryId: category ? category.id : selectedVariableCategoryId, amount: amount, type: category ? category.type : currentTransactionType, memo: memo });
+        appData.expenses.push({ 
+          id: generateUUID(), 
+          date: formatDate(new Date()), 
+          categoryId: category ? category.id : selectedVariableCategoryId, 
+          amount: amount, 
+          type: category ? category.type : currentTransactionType, 
+          memo: memo 
+        });
         saveData(); 
         
-        // 登録後にカテゴリの選択状態をリセット
-        const displayCategories = appData.categories.filter(c => c.type === (currentTransactionType === 'expense' ? 'variable' : 'income'));
-        if (displayCategories.length > 0) {
-          selectedVariableCategoryId = displayCategories[0].id;
-        }
+        // 登録後にカテゴリの選択状態をクリア（未選択）にする
+        selectedVariableCategoryId = null;
         
-        updateView(); return;
+        updateView(); 
+        return;
       }
       if (e.target.classList.contains('add-category-form')) {
         const type = e.target.dataset.type; const name = e.target.querySelector('.new-cat-name').value;
