@@ -620,15 +620,15 @@
 
       const monthlyCategoryTotals = {};
       const uniqueCycleMonths = new Set();
-      appData.expenses.filter(e => e.type !== 'income' && !e.is_deleted).forEach(e => {
-        if (!includeFixedCostsInChart && e.type ===appData.expenses.filter(e => e.type === 'variable' && !e.is_deleted).forEach(e => {
-        const c = getCycle(new Date(e.date));'fixed') return;
+      appData.expenses.filter(e => e.type === 'variable' && !e.is_deleted).forEach(e => {
+        const c = getCycle(new Date(e.date));
         if (c.year === targetYear) {
-           uniqueCycleMonths.add(c.month);
-           if (!monthlyCategoryTotals[e.categoryId]) monthlyCategoryTotals[e.categoryId] = 0;
-           monthlyCategoryTotals[e.categoryId] += e.amount;
+          uniqueCycleMonths.add(c.month);
+          if (!monthlyCategoryTotals[e.categoryId]) monthlyCategoryTotals[e.categoryId] = 0;
+          monthlyCategoryTotals[e.categoryId] += e.amount;
         }
       });
+
       const divBy = Math.max(1, uniqueCycleMonths.size);
       const categoryAverages = appData.categories.filter(c => c.type === 'variable')
          .map(cat => ({ id: cat.id, name: cat.name, avg: Math.round((monthlyCategoryTotals[cat.id] || 0) / divBy) }))
