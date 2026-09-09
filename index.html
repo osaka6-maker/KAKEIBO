@@ -256,7 +256,7 @@
       let newExpenses = [];
       
       appData.fixedCosts.forEach(fc => {
-        const isAlreadyAdded = appData.expenses.some(e => e.isAutoAdded && e.cycleKey === cycleKey && (String(e.fixedCostId) === String(fc.id) || (fc.categoryId && String(e.categoryId) === String(fc.categoryId))));
+        const isAlreadyAdded = appData.expenses.some(e => !e.is_deleted && e.isAutoAdded && e.cycleKey === cycleKey && (String(e.fixedCostId) === String(fc.id) || (fc.categoryId && String(e.categoryId) === String(fc.categoryId))));
         if (!isAlreadyAdded) {
           newExpenses.push({
             id: generateUUID(), date: formatDate(realCurrentCycle.startDate), categoryId: 'fixed_auto',
@@ -281,7 +281,7 @@
         while(m < 1) { m += 12; y -= 1; } while(m > 12) { m -= 12; y += 1; }
         cycles.set(`${y}-${m}`, { year: y, month: m });
       }
-      appData.expenses.forEach(e => { const c = getCycle(new Date(e.date)); cycles.set(`${c.year}-${c.month}`, { year: c.year, month: c.month }); });
+      appData.expenses.forEach(e => { if (e.is_deleted) return; const c = getCycle(new Date(e.date)); cycles.set(`${c.year}-${c.month}`, { year: c.year, month: c.month }); });
       const cycleList = Array.from(cycles.values()).sort((a, b) => b.year - a.year || b.month - a.month);
       let optionsHTML = cycleList.map(c => `<option value="${c.year}-${c.month}" ${(c.year === viewCycle.year && c.month === viewCycle.month) ? 'selected' : ''}>${c.year}年${c.month}月度</option>`).join('');
 
@@ -313,6 +313,7 @@
     const renderHomeHTML = (currentCycle) => {
       const displayCategories = appData.categories.filter(c => c.type === (currentTransactionType === 'expense' ? 'variable' : 'income'));
       const cycleExpenses = appData.expenses.filter(e => {
+        if (e.is_deleted) return false;
         const d = new Date(e.date); d.setHours(0,0,0,0);
         const start = new Date(currentCycle.startDate); start.setHours(0,0,0,0);
         const end = new Date(currentCycle.endDate); end.setHours(0,0,0,0);
@@ -401,6 +402,7 @@
       let prevTotalVariable = 0;
 
       appData.expenses.forEach(e => {
+        if (e.is_deleted) return;
         const c = getCycle(new Date(e.date));
         if (c.year === prevYear && c.month === prevMonth && e.type !== 'income') {
             const keyId = String(e.categoryId) === 'fixed_auto' ? e.fixedCostId : e.categoryId;
@@ -561,7 +563,7 @@
       const catToGroup = {};
       appData.categories.forEach(c => catToGroup[c.id] = c.groupId || 'g3');
 
-      appData.expenses.filter(e => e.type !== 'income').forEach(e => {
+      appData.expenses.filter(e => e.type !== 'income' && !e.is_deleted).forEach(e => {
         if (!includeFixedCostsInChart && e.type === 'fixed') return;
         const c = getCycle(new Date(e.date));
         const key = `${c.year}-${String(c.month).padStart(2, '0')}`;
@@ -618,8 +620,9 @@
 
       const monthlyCategoryTotals = {};
       const uniqueCycleMonths = new Set();
-      appData.expenses.filter(e => e.type === 'variable').forEach(e => {
-        const c = getCycle(new Date(e.date));
+      appData.expenses.filter(e => e.type !== 'income' && !e.is_deleted).forEach(e => {
+        if (!includeFixedCostsInChart && e.type ===appData.expenses.filter(e => e.type === 'variable' && !e.is_deleted).forEach(e => {
+        const c = getCycle(new Date(e.date));'fixed') return;
         if (c.year === targetYear) {
            uniqueCycleMonths.add(c.month);
            if (!monthlyCategoryTotals[e.categoryId]) monthlyCategoryTotals[e.categoryId] = 0;
@@ -1173,7 +1176,10 @@
       }
       const delExpBtn = e.target.closest('.del-exp-btn');
       if (delExpBtn) {
-        confirmAction('この記録を削除しますか？', () => { appData.expenses = appData.expenses.filter(exp => String(exp.id) !== String(delExpBtn.dataset.id)); saveData(); updateView(); }); return;
+        confirmAction('この記録を削除しますか？', () => {
+          appData.expenses = appData.expenses.map(exp => String(exp.id) === String(delExpBtn.dataset.id) ? { ...exp, is_deleted: true } : exp);
+          saveData(); updateView();
+        }); return;
       }
       if (e.target.closest('#export-csv-btn')) { handleExportCSV(); return; }
       if (e.target.closest('#save-budget-btn')) { appData.budget.monthly = Number(document.getElementById('budget-month-input').value); saveData(); alertAction('予算を保存しました'); return; }
@@ -1208,10 +1214,13 @@
         if (isNaN(amount) || !date) return;
         const expIndex = appData.expenses.findIndex(exp => String(exp.id) === String(id));
         if (expIndex !== -1) {
-          const isFixed = appData.expenses[expIndex].type === 'fixed';
-          appData.expenses[expIndex].amount = amount; appData.expenses[expIndex].date = date; appData.expenses[expIndex].memo = memo;
-          const c = getCycle(new Date(date)); appData.expenses[expIndex].cycleKey = `${c.year}-${c.month}`;
-          if (!isFixed) { const catId = document.getElementById('edit-exp-cat').value; appData.expenses[expIndex].categoryId = Number(catId) || catId; }
+          const oldExp = appData.expenses[expIndex];
+          const isFixed = oldExp.type === 'fixed';
+          const c = getCycle(new Date(date));
+          const newExp = { ...oldExp, id: generateUUID(), amount: amount, date: date, memo: memo, cycleKey: `${c.year}-${c.month}` };
+          if (!isFixed) { const catId = document.getElementById('edit-exp-cat').value; newExp.categoryId = Number(catId) || catId; }
+          appData.expenses[expIndex].is_deleted = true;
+          appData.expenses.push(newExp);
           saveData(); editExpenseModalState.isOpen = false; editExpenseModalState.expId = null; updateView();
         } return;
       }
@@ -1313,6 +1322,7 @@
                     const memo = cols[6] || '';
                     if (!isNaN(amount) && amount > 0) {
                         const isDuplicate = appData.expenses.some(exp => {
+                            if (exp.is_deleted) return false;
                             if (exp.amount !== amount) return false;
                             const diffDays = Math.abs(new Date(date) - new Date(exp.date)) / (1000 * 3600 * 24);
                             return diffDays <= 3;
