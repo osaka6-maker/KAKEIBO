@@ -57,7 +57,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { initializeFirestore, persistentLocalCache, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAW0RzaHk4UJmOzT5Yej23YWcJsVcMVPVA",
@@ -71,7 +71,9 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache()
+    });
     let currentUser = null;
 
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwuG0Zj3zl4n7o-Y-YGDz8ASqLKD7R8mT8ZvNcWzwkna6JK68gmwZTAo6D2UNZYI9vM/exec"; 
@@ -1045,14 +1047,41 @@
 
       const migrateBtn = e.target.closest('#migrate-gas-btn');
       if (migrateBtn) {
-        if(!confirm("旧システム(GAS)からデータを読み込み、Firebaseに保存しますか？\n※現在のFirebaseのデータは上書きされます")) return;
-        migrateBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 mr-2 animate-spin"></i>移行中...';
+        migrateBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 mr-2 animate-spin"></i>データ比較中...';
         try {
           const response = await fetch(GAS_WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'load' }) });
           const result = await response.json();
           if (result.status === 'success' && result.data) {
-            appData = result.data; sanitizeAppData(); await saveData(); alert('引き継ぎが完了しました！'); updateView();
-          } else alert('GAS側にデータが見つかりませんでした。');
+            const gasData = result.data;
+            
+            // 最新の記帳日付を取得するヘルパー関数
+            const getLatestTime = (expenses) => {
+              const dates = (expenses || []).filter(e => !e.is_deleted && e.date).map(e => new Date(e.date).getTime());
+              return dates.length > 0 ? Math.max(...dates) : 0;
+            };
+            
+            const fbTime = getLatestTime(appData?.expenses);
+            const gasTime = getLatestTime(gasData.expenses);
+            const fbCount = (appData?.expenses || []).filter(e => !e.is_deleted).length;
+            const gasCount = (gasData.expenses || []).filter(e => !e.is_deleted).length;
+
+            const formatD = (t) => t === 0 ? 'データなし' : new Date(t).toLocaleDateString('ja-JP');
+            
+            let msg = `【データ比較結果】\n`;
+            msg += `▶ 現在のFirebase: 最新 ${formatD(fbTime)} (${fbCount}件)\n`;
+            msg += `▶ 取得したGAS   : 最新 ${formatD(gasTime)} (${gasCount}件)\n\n`;
+
+            if (fbTime >= gasTime && fbCount >= gasCount) {
+              msg += `⚠️ GASのデータは現在より古い（または同じ）ため、上書きすると記録が消える恐れがあります。\n強制的に上書きしますか？`;
+            } else {
+              msg += `✅ GASのデータの方が新しいようです。\nFirebaseを上書きして引き継ぎますか？`;
+            }
+
+            if (confirm(msg)) {
+              appData = gasData; sanitizeAppData(); await saveData(); 
+              alert('引き継ぎが完了しました！'); updateView();
+            }
+          } else { alert('GAS側にデータが見つかりませんでした。'); }
         } catch (err) { alert('移行に失敗しました。'); }
         migrateBtn.innerHTML = '<i data-lucide="download-cloud" class="w-4 h-4 mr-2"></i>過去のデータをGASから引き継ぐ';
         lucide.createIcons(); return;
@@ -1403,8 +1432,26 @@
       if (user) {
         currentUser = user; loginScreen.classList.add('hidden'); appContainer.classList.remove('hidden');
         onSnapshot(doc(db, "users", user.uid), (docSnap) => {
-          if (docSnap.exists()) { appData = docSnap.data(); sanitizeAppData(); checkAutoFixedCosts(); updateView(); } 
-          else { appData = JSON.parse(JSON.stringify(initialData)); saveData(); updateView(); }
+          if (docSnap.exists()) { 
+            appData = docSnap.data(); sanitizeAppData(); checkAutoFixedCosts(); updateView(); 
+          } else { 
+            // 改修1: 自動保存(saveData)を廃止。異なるGoogleアカウントでログインした際の強制上書きを防ぐ
+            appData = JSON.parse(JSON.stringify(initialData)); 
+            updateView(); 
+            alertAction("【警告】データが見つかりません。過去にご利用の場合は、ログインしているGoogleアカウントが間違っている可能性があります。");
+          }
+        }, (error) => {
+          // 改修2: 通信エラー時のストッパー。画面をエラーメッセージで覆い隠して操作不能にする
+          console.error("Firebase読み込みエラー:", error);
+          document.getElementById('app-container').innerHTML = `
+            <div class="flex flex-col items-center justify-center h-screen bg-gray-50 p-6 text-center">
+              <i data-lucide="alert-triangle" class="w-12 h-12 text-red-500 mb-4"></i>
+              <h2 class="text-xl font-bold text-gray-800 mb-2">データの読み込みに失敗しました</h2>
+              <p class="text-sm text-gray-600 mb-6">通信環境が不安定か、サーバーにアクセスできません。<br>誤ったデータで上書きされるのを防ぐため、アプリを安全に停止しました。</p>
+              <button onclick="window.location.reload()" class="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-sm">画面を再読み込み</button>
+            </div>
+          `;
+          if (window.lucide) lucide.createIcons();
         });
       } else { currentUser = null; appData = null; loginScreen.classList.remove('hidden'); appContainer.classList.add('hidden'); }
     });
