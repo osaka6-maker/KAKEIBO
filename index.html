@@ -415,6 +415,7 @@
       });
 
       const cycleExpenses = appData.expenses.filter(e => {
+        if (e.is_deleted) return false;
         const d = new Date(e.date); d.setHours(0,0,0,0);
         const start = new Date(currentCycle.startDate); start.setHours(0,0,0,0);
         const end = new Date(currentCycle.endDate); end.setHours(0,0,0,0);
@@ -973,6 +974,7 @@
     const handleExportCSV = () => {
       const currentCycle = getCycle(viewCycleDate);
       const cycleExpenses = appData.expenses.filter(e => {
+        if (e.is_deleted) return false;
         const d = new Date(e.date); d.setHours(0,0,0,0);
         const start = new Date(currentCycle.startDate); start.setHours(0,0,0,0);
         const end = new Date(currentCycle.endDate); end.setHours(0,0,0,0);
